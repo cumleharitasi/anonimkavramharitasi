@@ -106,7 +106,7 @@
             background: #b71c1c;
         }
 
-        /* 2. EKRAN: DÜZENLİ SIRALI CÜMLE HAVUZU */
+        /* 2. EKRAN: PARAGRAF AKIŞI GİBİ SOLDAN SAĞA VE ALT ALTA CÜMLE HAVUZU */
         #pool-view {
             display: none;
             position: relative;
@@ -146,30 +146,32 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
         }
 
-        /* Baloncukların Düzenli Yerleştiği Havuz Alanı */
+        /* Soldan Sağa ve Satır Doldukça Alt Alta Akan Havuz Alanı */
         #bubbles-container {
             width: 100%;
             height: 100%;
-            padding: 76px 24px 32px 24px;
+            padding: 76px 28px 32px 28px;
             overflow-y: auto;
             display: flex;
             flex-wrap: wrap;
             align-content: flex-start;
-            justify-content: center;
-            gap: 16px;
+            justify-content: flex-start;
+            align-items: flex-start;
+            gap: 14px;
         }
         .bubble {
             position: relative;
-            padding: 16px 22px;
-            border-radius: 22px;
+            padding: 14px 20px;
+            border-radius: 20px;
             font-size: 16px;
             line-height: 1.45;
-            max-width: 300px;
+            max-width: 100%;
+            text-align: left;
             word-wrap: break-word;
             overflow-wrap: break-word;
             box-shadow: 0 6px 16px rgba(13, 71, 161, 0.16);
             border: 2px solid rgba(255,255,255,0.55);
-            animation: popIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             cursor: default;
         }
 
@@ -260,7 +262,7 @@
         }
 
         @keyframes popIn {
-            0% { opacity: 0; transform: scale(0.7); }
+            0% { opacity: 0; transform: scale(0.85); }
             100% { opacity: 1; transform: scale(1); }
         }
     </style>
@@ -277,7 +279,7 @@
         <button class="admin-login-btn" type="button" onclick="openAdminModal()">Yönetici Girişi</button>
     </div>
 
-    <!-- 2. EKRAN: SIRALI CÜMLE HAVUZU -->
+    <!-- 2. EKRAN: PARAGRAF DÜZENİNDE CÜMLE HAVUZU -->
     <div id="pool-view">
         <div class="top-actions">
             <button class="btn-clear-all" type="button" onclick="clearAllSentences()">Tümünü Temizle</button>
@@ -329,7 +331,7 @@
         let lastSentText = '';
         let lastSentTime = 0;
 
-        // Veritabanından gelen her yeni cümleyi sıralı havuza ekle
+        // Veritabanından gelen her yeni cümleyi paragraf akışı gibi soldan sağa ekle
         onChildAdded(ideasRef, (snapshot) => {
             const val = snapshot.val();
             const key = snapshot.key;
@@ -379,7 +381,6 @@
             const text = input.value.trim();
             if (!text) return;
 
-            // Aynı metnin 4 saniye içinde tekrar gönderilmesini engelle
             const now = Date.now();
             if (text === lastSentText && (now - lastSentTime) < 4000) {
                 return;
