@@ -136,27 +136,45 @@
             right: 16px;
             z-index: 50;
             display: flex;
-            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 8px;
+            left: 16px;
         }
         .btn-add {
             background: #0d47a1;
             color: white;
             border: none;
-            padding: 10px 16px;
+            padding: 10px 14px;
             border-radius: 10px;
-            font-size: 14px;
+            font-size: 13.5px;
             font-weight: bold;
             cursor: pointer;
             box-shadow: 0 4px 12px rgba(13, 71, 161, 0.3);
+        }
+        .btn-toggle-delete {
+            display: none;
+            background: #ef6c00;
+            color: white;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 13.5px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        }
+        .btn-toggle-delete.active {
+            background: #2e7d32;
         }
         .btn-clear-all {
             display: none;
             background: #d32f2f;
             color: white;
             border: none;
-            padding: 10px 16px;
+            padding: 10px 14px;
             border-radius: 10px;
-            font-size: 14px;
+            font-size: 13.5px;
             font-weight: bold;
             cursor: pointer;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
@@ -191,7 +209,7 @@
             cursor: default;
         }
 
-        /* Tekli Cümle Silme İkonu */
+        /* Tekli Cümle Silme İkonu (Sadece Silme Modu Açıldığında Görünür) */
         .delete-single-btn {
             display: none;
             position: absolute;
@@ -210,9 +228,10 @@
             cursor: pointer;
             box-shadow: 0 2px 6px rgba(0,0,0,0.35);
         }
-        body.admin-mode .delete-single-btn {
+        body.admin-mode.delete-active .delete-single-btn {
             display: block;
         }
+        body.admin-mode .btn-toggle-delete,
         body.admin-mode .btn-clear-all {
             display: block;
         }
@@ -301,6 +320,7 @@
     <!-- 2. EKRAN: PARAGRAF DÜZENİNDE CÜMLE HAVUZU -->
     <div id="pool-view">
         <div class="top-actions">
+            <button id="toggleDeleteBtn" class="btn-toggle-delete" type="button" onclick="toggleDeleteMode()">Cümle Seç / Sil</button>
             <button class="btn-clear-all" type="button" onclick="clearAllSentences()">Tümünü Temizle</button>
             <button class="btn-add" type="button" onclick="openEntry()">+ Cümle Yaz</button>
         </div>
@@ -448,11 +468,29 @@
             const pass = document.getElementById('adminPassInput').value;
             if (pass === 'Baran123') {
                 document.body.classList.add('admin-mode');
+                // Girişte çarpılar gizli başlar
+                document.body.classList.remove('delete-active');
+                const toggleBtn = document.getElementById('toggleDeleteBtn');
+                toggleBtn.classList.remove('active');
+                toggleBtn.innerText = 'Cümle Seç / Sil';
+
                 closeAdminModal();
                 document.getElementById('entry-view').style.display = 'none';
                 document.getElementById('pool-view').style.display = 'block';
             } else {
                 document.getElementById('admin-error').innerText = 'Hatalı şifre!';
+            }
+        };
+
+        window.toggleDeleteMode = function() {
+            const isActive = document.body.classList.toggle('delete-active');
+            const toggleBtn = document.getElementById('toggleDeleteBtn');
+            if (isActive) {
+                toggleBtn.classList.add('active');
+                toggleBtn.innerText = 'Silmeyi Bitir';
+            } else {
+                toggleBtn.classList.remove('active');
+                toggleBtn.innerText = 'Cümle Seç / Sil';
             }
         };
 
