@@ -79,42 +79,40 @@
             font-weight: bold;
         }
 
-        /* 2. EKRAN: CÜMLE HAVUZU (AÇIK MAVİ ARKA PLAN) */
+        /* 2. EKRAN: CÜMLE HAVUZU (ŞERİTSİZ KESİNTİSİZ MAVİ ARKA PLAN) */
         #pool-view {
             display: none;
-            flex-direction: column;
+            position: relative;
             height: 100%;
             width: 100%;
             background: linear-gradient(135deg, #42a5f5 0%, #1e88e5 100%);
         }
-        #pool-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 14px 20px;
-            background: rgba(255, 255, 255, 0.96);
-            box-shadow: 0 2px 10px rgba(0,0,0,0.12);
-            z-index: 10;
-        }
-        #pool-header h2 {
-            font-size: 18px;
-            color: #0d47a1;
-        }
         .btn-add {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            z-index: 10;
             background: #0d47a1;
             color: white;
             border: none;
-            padding: 9px 14px;
-            border-radius: 8px;
+            padding: 10px 16px;
+            border-radius: 10px;
             font-size: 14px;
             font-weight: bold;
             cursor: pointer;
+            box-shadow: 0 4px 12px rgba(13, 71, 161, 0.25);
+            transition: transform 0.1s, background 0.2s;
+        }
+        .btn-add:active {
+            transform: scale(0.97);
+            background: #082f6e;
         }
 
         /* Baloncukların Serbestçe Yerleştiği Havuz Alanı */
         #bubbles-container {
-            flex: 1;
-            padding: 24px;
+            width: 100%;
+            height: 100%;
+            padding: 68px 24px 24px 24px;
             overflow-y: auto;
             display: flex;
             flex-wrap: wrap;
@@ -157,10 +155,7 @@
 
     <!-- 2. EKRAN: CÜMLE HAVUZU -->
     <div id="pool-view">
-        <div id="pool-header">
-            <h2>Canlı Cümle Havuzu (<span id="count">0</span>)</h2>
-            <button class="btn-add" onclick="openEntry()">+ Cümle Yaz</button>
-        </div>
+        <button class="btn-add" onclick="openEntry()">+ Cümle Yaz</button>
         <div id="bubbles-container"></div>
     </div>
 
@@ -187,20 +182,18 @@
             '#fff9c4', '#ffccbc', '#b2ebf2', 
             '#f8bbd0', '#e1bee7', '#dcedc8'
         ];
-        let sentenceCount = 0;
+        let colorIndex = 0;
 
         onChildAdded(ideasRef, (snapshot) => {
             const val = snapshot.val();
             if (!val || !val.text) return;
 
-            sentenceCount++;
-            document.getElementById('count').innerText = sentenceCount;
-
+            colorIndex++;
             const container = document.getElementById('bubbles-container');
             const bubble = document.createElement('div');
             bubble.className = 'bubble';
             bubble.innerText = val.text;
-            bubble.style.backgroundColor = colors[sentenceCount % colors.length];
+            bubble.style.backgroundColor = colors[colorIndex % colors.length];
             
             container.appendChild(bubble);
         });
@@ -215,7 +208,7 @@
                     input.value = '';
                     document.getElementById('error-msg').innerText = '';
                     document.getElementById('entry-view').style.display = 'none';
-                    document.getElementById('pool-view').style.display = 'flex';
+                    document.getElementById('pool-view').style.display = 'block';
                 })
                 .catch((err) => {
                     document.getElementById('error-msg').innerText = 'Hata oluştu: ' + err.message;
