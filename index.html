@@ -139,6 +139,19 @@
             cursor: not-allowed;
             transform: none;
         }
+        .btn-go-pool {
+            display: none;
+            width: 100%;
+            padding: 13px;
+            margin-top: 10px;
+            font-size: 15px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1.5px solid rgba(255, 255, 255, 0.7);
+            font-weight: bold;
+            cursor: pointer;
+        }
         .spelling-note {
             color: #ffffff;
             font-size: 13.5px;
@@ -332,6 +345,27 @@
             text-underline-offset: 2px;
         }
 
+        /* Sadece Cümle Sahibine Görünen Silme Butonu */
+        .own-delete-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #ffebee;
+            border: 1px solid #ef9a9a;
+            border-radius: 12px;
+            padding: 4px 9px;
+            font-size: 12px;
+            font-weight: bold;
+            color: #c62828;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: transform 0.12s, background 0.2s;
+        }
+        .own-delete-btn:active {
+            transform: scale(0.92);
+            background: #ffcdd2;
+        }
+
         /* Beğeni Butonu (👍️) */
         .like-btn {
             display: inline-flex;
@@ -362,7 +396,7 @@
             cursor: not-allowed;
         }
 
-        /* Tekli Cümle Silme İkonu */
+        /* Yönetici Tekli Cümle Silme İkonu */
         .delete-single-btn {
             display: none;
             position: absolute;
@@ -474,6 +508,7 @@
                 </div>
             </div>
             <button id="sendBtn" class="send-btn" type="button">Gönder</button>
+            <button id="goPoolBtn" class="btn-go-pool" type="button" onclick="goToPool()">Cümle Havuzuna Git</button>
             <div class="spelling-note">Cümleni kurarken büyük harf, noktalama işaretleri ve yazım kurallarına özen göster.</div>
             <div id="error-msg"></div>
         </div>
@@ -487,7 +522,7 @@
             <button id="toggleDeleteBtn" class="btn-toggle-delete" type="button" onclick="toggleDeleteMode()">Cümle Seç / Sil</button>
             <button class="btn-clear-all" type="button" onclick="clearAllSentences()">Tümünü Temizle</button>
             <button class="btn-admin-logout" type="button" onclick="logoutAdmin()">Yönetici Çıkışı</button>
-            <button class="btn-add" type="button" onclick="openEntry()">+ Cümle Yaz</button>
+            <button id="addSentenceTopBtn" class="btn-add" type="button" onclick="openEntry()">+ Cümle Yaz</button>
         </div>
         <div id="bubbles-container"></div>
         <div id="toast-msg"></div>
@@ -508,7 +543,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, push, onChildAdded, onChildChanged, onChildRemoved, remove, runTransaction } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getDatabase, ref, push, set, onChildAdded, onChildChanged, onChildRemoved, remove, runTransaction } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCKyoNQaWgh61lLY24ard-Q5WCS3CdIn6k",
@@ -531,15 +566,13 @@
         ];
 
         const sentencesMap = new Map();
-        // Kullanıcının kendi yazdığı cümlelerin anahtarları
-        const ownKeys = new Set(JSON.parse(localStorage.getItem('ownSentences') || '[]'));
-        // Kullanıcının seçtiği tek cümle anahtarı (en fazla 1 adet)
+        // Kullanıcının havuzdaki tek cümlesinin anahtarı
+        let ownSentenceKey = localStorage.getItem('ownSentenceKey') || null;
+        // Kullanıcının beğendiği tek cümlenin anahtarı
         let votedKey = localStorage.getItem('votedSentenceKey') || null;
 
         let colorIndex = 0;
         let isSubmitting = false;
-        let lastSentText = '';
-        let lastSentTime = 0;
         let toastTimer = null;
 
         const editor = document.getElementById('sentenceEditor');
@@ -554,11 +587,16 @@
             clearTimeout(toastTimer);
             toastTimer = setTimeout(() => {
                 toast.classList.remove('show');
-            }, 2400);
+            }, 2600);
         }
 
-        function saveOwnKeys() {
-            localStorage.setItem('ownSentences', JSON.stringify([...ownKeys]));
+        function saveOwnSentenceKey() {
+            if (ownSentenceKey) {
+                localStorage.setItem('ownSentenceKey', ownSentenceKey);
+            } else {
+                localStorage.removeItem('ownSentenceKey');
+            }
+            updateWritePermissionUI();
         }
 
         function saveVotedKey() {
@@ -566,6 +604,21 @@
                 localStorage.setItem('votedSentenceKey', votedKey);
             } else {
                 localStorage.removeItem('votedSentenceKey');
+            }
+        }
+
+        // Kullanıcının havuzda aktif cümlesi varsa yeni cümle yazma butonunu gizle / uyar
+        function updateWritePermissionUI() {
+            const hasActiveOwn = ownSentenceKey && sentencesMap.has(ownSentenceKey);
+            const addTopBtn = document.getElementById('addSentenceTopBtn');
+            const goPoolBtn = document.getElementById('goPoolBtn');
+
+            if (hasActiveOwn) {
+                addTopBtn.style.display = 'none';
+                goPoolBtn.style.display = 'block';
+            } else {
+                addTopBtn.style.display = 'block';
+                goPoolBtn.style.display = sentencesMap.size > 0 ? 'block' : 'none';
             }
         }
 
@@ -634,7 +687,6 @@
         editor.addEventListener('keyup', updateToolbarState);
         editor.addEventListener('mouseup', updateToolbarState);
 
-        // En çok beğeni alandan en aza sırala ve en yüksek beğeni alan cümlenin başına "Dersin Cümlesi 👑" ekle
         function reorderBubbles() {
             const container = document.getElementById('bubbles-container');
             const sortedItems = [...sentencesMap.values()].sort((a, b) => {
@@ -653,7 +705,7 @@
         }
 
         function updateLikeButtonUI(btn, key, count) {
-            const isOwn = ownKeys.has(key);
+            const isOwn = ownSentenceKey === key;
             const isLiked = votedKey === key;
             btn.classList.toggle('liked', isLiked);
             btn.classList.toggle('own-sentence', isOwn);
@@ -661,14 +713,12 @@
             btn.innerHTML = `👍️ <span>${count}</span>`;
         }
 
-        // Her kullanıcı (yönetici dahil) kendi cümlesi hariç SADECE 1 cümleyi beğenebilir
         function toggleLike(key) {
-            if (ownKeys.has(key)) {
+            if (ownSentenceKey === key) {
                 showToast('Kendi cümleni beğenemezsin!');
                 return;
             }
 
-            // Zaten bu cümleyi beğenmişse beğeniyi geri al
             if (votedKey === key) {
                 votedKey = null;
                 saveVotedKey();
@@ -686,7 +736,6 @@
                 return;
             }
 
-            // Daha önce başka bir cümleye oy verdiyse önceki oyunu otomatik düşür ve yenisine aktar
             const previousKey = votedKey;
             if (previousKey && sentencesMap.has(previousKey)) {
                 const prevItem = sentencesMap.get(previousKey);
@@ -698,7 +747,6 @@
                 });
             }
 
-            // Yeni seçilen cümleye oy ver
             votedKey = key;
             saveVotedKey();
 
@@ -725,6 +773,7 @@
 
             colorIndex++;
             const likesCount = val.likes || 0;
+            const isOwn = ownSentenceKey === key;
 
             const bubble = document.createElement('div');
             bubble.className = 'bubble';
@@ -742,6 +791,21 @@
             textSpan.innerHTML = sanitizeFormattedHTML(val.text);
             bubble.appendChild(textSpan);
 
+            // Sadece cümlenin kendi yazarına görünen silme butonu
+            const ownDelBtn = document.createElement('button');
+            ownDelBtn.className = 'own-delete-btn';
+            ownDelBtn.type = 'button';
+            ownDelBtn.innerText = 'Cümlemi Sil';
+            ownDelBtn.style.display = isOwn ? 'inline-flex' : 'none';
+            ownDelBtn.onclick = function() {
+                if (confirm('Kendi cümleni silip yeni bir cümle yazmak istiyor musun?')) {
+                    remove(ref(db, 'cumleler/' + key)).then(() => {
+                        showToast('Cümlen silindi. Şimdi yeni cümle yazabilirsin.');
+                    });
+                }
+            };
+            bubble.appendChild(ownDelBtn);
+
             const likeBtn = document.createElement('button');
             likeBtn.className = 'like-btn';
             likeBtn.type = 'button';
@@ -751,15 +815,16 @@
             };
             bubble.appendChild(likeBtn);
 
-            const delBtn = document.createElement('button');
-            delBtn.className = 'delete-single-btn';
-            delBtn.type = 'button';
-            delBtn.innerText = '✕';
-            delBtn.title = 'Bu cümleyi sil';
-            delBtn.onclick = function() {
+            // Yönetici için tekli silme ikonu
+            const adminDelBtn = document.createElement('button');
+            adminDelBtn.className = 'delete-single-btn';
+            adminDelBtn.type = 'button';
+            adminDelBtn.innerText = '✕';
+            adminDelBtn.title = 'Bu cümleyi sil';
+            adminDelBtn.onclick = function() {
                 remove(ref(db, 'cumleler/' + key));
             };
-            bubble.appendChild(delBtn);
+            bubble.appendChild(adminDelBtn);
 
             sentencesMap.set(key, {
                 key: key,
@@ -767,9 +832,11 @@
                 order: colorIndex,
                 element: bubble,
                 likeBtn: likeBtn,
-                crownBadge: crownBadge
+                crownBadge: crownBadge,
+                ownDelBtn: ownDelBtn
             });
 
+            updateWritePermissionUI();
             reorderBubbles();
         });
 
@@ -792,20 +859,27 @@
             }
             sentencesMap.delete(key);
 
-            if (ownKeys.has(key)) {
-                ownKeys.delete(key);
-                saveOwnKeys();
+            if (ownSentenceKey === key) {
+                ownSentenceKey = null;
+                saveOwnSentenceKey();
             }
             if (votedKey === key) {
                 votedKey = null;
                 saveVotedKey();
             }
+            updateWritePermissionUI();
             reorderBubbles();
         });
 
         function handleSend(e) {
             if (e) e.preventDefault();
             if (isSubmitting) return;
+
+            // Havuzda zaten aktif bir cümlesi varsa ikinciyi göndermesine izin verme
+            if (ownSentenceKey && sentencesMap.has(ownSentenceKey)) {
+                document.getElementById('error-msg').innerText = 'Zaten havuzda bir cümlen var. Yeni yazmak için önce havuzdan kendi cümleni silmelisin.';
+                return;
+            }
 
             const sendBtn = document.getElementById('sendBtn');
             const plainText = editor.innerText.trim();
@@ -815,52 +889,53 @@
             if (!formattedHtml) return;
 
             const now = Date.now();
-            if (plainText === lastSentText && (now - lastSentTime) < 4000) {
-                return;
-            }
-
             isSubmitting = true;
-            lastSentText = plainText;
-            lastSentTime = now;
             sendBtn.disabled = true;
             sendBtn.innerText = 'Gönderiliyor...';
 
             const newSentenceRef = push(ideasRef);
             const newKey = newSentenceRef.key;
 
-            // Bu cümleyi kullanıcının kendi cümlesi olarak işaretle (beğenmesini engellemek için)
-            ownKeys.add(newKey);
-            saveOwnKeys();
+            ownSentenceKey = newKey;
+            saveOwnSentenceKey();
 
-            import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(({ set }) => {
-                set(newSentenceRef, { text: formattedHtml, likes: 0, timestamp: now })
-                    .then(() => {
-                        editor.innerHTML = '';
-                        updateToolbarState();
-                        document.getElementById('error-msg').innerText = '';
-                        document.getElementById('entry-view').style.display = 'none';
-                        document.getElementById('pool-view').style.display = 'block';
-                    })
-                    .catch((err) => {
-                        ownKeys.delete(newKey);
-                        saveOwnKeys();
-                        lastSentText = '';
-                        document.getElementById('error-msg').innerText = 'Hata oluştu: ' + err.message;
-                    })
-                    .finally(() => {
-                        isSubmitting = false;
-                        sendBtn.disabled = false;
-                        sendBtn.innerText = 'Gönder';
-                    });
-            });
+            set(newSentenceRef, { text: formattedHtml, likes: 0, timestamp: now })
+                .then(() => {
+                    editor.innerHTML = '';
+                    updateToolbarState();
+                    document.getElementById('error-msg').innerText = '';
+                    document.getElementById('entry-view').style.display = 'none';
+                    document.getElementById('pool-view').style.display = 'block';
+                    updateWritePermissionUI();
+                })
+                .catch((err) => {
+                    ownSentenceKey = null;
+                    saveOwnSentenceKey();
+                    document.getElementById('error-msg').innerText = 'Hata oluştu: ' + err.message;
+                })
+                .finally(() => {
+                    isSubmitting = false;
+                    sendBtn.disabled = false;
+                    sendBtn.innerText = 'Gönder';
+                });
         }
 
         document.getElementById('sendBtn').addEventListener('click', handleSend);
 
         window.openEntry = function() {
+            if (ownSentenceKey && sentencesMap.has(ownSentenceKey)) {
+                showToast('Zaten bir cümlen var. Değiştirmek için "Cümlemi Sil" butonuna bas.');
+                return;
+            }
             resetAdminState();
+            document.getElementById('error-msg').innerText = '';
             document.getElementById('pool-view').style.display = 'none';
             document.getElementById('entry-view').style.display = 'flex';
+        };
+
+        window.goToPool = function() {
+            document.getElementById('entry-view').style.display = 'none';
+            document.getElementById('pool-view').style.display = 'block';
         };
 
         window.openAdminModal = function() {
