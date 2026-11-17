@@ -147,7 +147,7 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
         }
 
-        /* Sürüklenebilir Tuval Alanı */
+        /* Kaydırılabilir Tuval Alanı */
         #map-canvas {
             position: absolute;
             top: 0;
@@ -171,7 +171,7 @@
             border: 2px solid rgba(255,255,255,0.65);
             transform: translate(-50%, -50%) scale(0);
             animation: popCenter 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-            cursor: move;
+            cursor: default;
             z-index: 5;
         }
         .bubble:hover {
@@ -330,13 +330,11 @@
             '#f8bbd0', '#e1bee7', '#dcedc8'
         ];
 
-        // Yerleşen baloncukların çarpışmasını önlemek için koordinat listesi
         const placedBoxes = [];
         let colorIndex = 0;
 
-        // İki baloncuk kutusunun üst üste binip binmediğini kontrol eder
         function isOverlapping(x, y, w, h) {
-            const pad = 16; // Balonlar arası minimum boşluk
+            const pad = 16;
             for (const box of placedBoxes) {
                 if (
                     Math.abs(x - box.x) * 2 < (w + box.w + pad) &&
@@ -348,16 +346,15 @@
             return false;
         }
 
-        // Merkezden (0,0) dışa doğru spiral tarayarak en yakın boş yeri bulur
         function findFreePosition(w, h) {
             if (placedBoxes.length === 0) {
                 return { x: 0, y: 0 };
             }
-            let angle = placedBoxes.length * 2.39996; // Altın açı (doğal dağılım için)
+            let angle = placedBoxes.length * 2.39996;
             let radius = 40;
             while (radius < 4000) {
                 const x = Math.cos(angle) * radius;
-                const y = Math.sin(angle) * radius * 0.82; // Geniş ekranlara daha estetik yayılım
+                const y = Math.sin(angle) * radius * 0.82;
                 if (!isOverlapping(x, y, w, h)) {
                     return { x, y };
                 }
@@ -367,7 +364,7 @@
             return { x: 0, y: 0 };
         }
 
-        // Tuval kaydırma (Pan) değişkenleri
+        // Haritada genel gezinme (Pan) - baloncuk üzerinden tutulsa bile tüm tuvali kaydırır
         let panX = 0, panY = 0;
         const canvas = document.getElementById('map-canvas');
         const poolView = document.getElementById('pool-view');
@@ -376,10 +373,9 @@
             canvas.style.transform = `translate(${panX}px, ${panY}px)`;
         }
 
-        // Arka planı sürükleyerek haritada gezinme (Fare & Dokunmatik)
         let isPanning = false, startPanX = 0, startPanY = 0;
         poolView.addEventListener('pointerdown', (e) => {
-            if (e.target !== poolView && e.target !== canvas) return;
+            if (e.target.closest('button')) return;
             isPanning = true;
             startPanX = e.clientX - panX;
             startPanY = e.clientY - panY;
@@ -392,33 +388,7 @@
         });
         window.addEventListener('pointerup', () => { isPanning = false; });
 
-        // Tekil baloncuğu sürükleme desteği
-        function makeDraggable(el, boxRecord) {
-            let dragging = false, offsetX = 0, offsetY = 0;
-            el.addEventListener('pointerdown', (e) => {
-                if (e.target.classList.contains('delete-single-btn')) return;
-                e.stopPropagation();
-                dragging = true;
-                offsetX = e.clientX - boxRecord.x;
-                offsetY = e.clientY - boxRecord.y;
-                el.style.zIndex = 30;
-            });
-            window.addEventListener('pointermove', (e) => {
-                if (!dragging) return;
-                boxRecord.x = e.clientX - offsetX;
-                boxRecord.y = e.clientY - offsetY;
-                el.style.left = `calc(50% + ${boxRecord.x}px)`;
-                el.style.top = `calc(50% + ${boxRecord.y}px)`;
-            });
-            window.addEventListener('pointerup', () => {
-                if (dragging) {
-                    dragging = false;
-                    el.style.zIndex = 5;
-                }
-            });
-        }
-
-        // Yeni cümle eklendiğinde merkezden yayılacak şekilde yerleştir
+        // Yeni cümle eklendiğinde merkezden yayılacak şekilde sabit yerleştir
         onChildAdded(ideasRef, (snapshot) => {
             const val = snapshot.val();
             const key = snapshot.key;
@@ -443,7 +413,6 @@
             };
             bubble.appendChild(delBtn);
 
-            // Gerçek boyutunu ölçmek için geçici görünmez yerleştirme
             bubble.style.visibility = 'hidden';
             bubble.style.left = '50%';
             bubble.style.top = '50%';
@@ -453,17 +422,13 @@
             const h = bubble.offsetHeight || 65;
             const pos = findFreePosition(w, h);
 
-            const boxRecord = { key, x: pos.x, y: pos.y, w, h };
-            placedBoxes.push(boxRecord);
+            placedBoxes.push({ key, x: pos.x, y: pos.y, w, h });
 
             bubble.style.left = `calc(50% + ${pos.x}px)`;
             bubble.style.top = `calc(50% + ${pos.y}px)`;
             bubble.style.visibility = 'visible';
-
-            makeDraggable(bubble, boxRecord);
         });
 
-        // Silinen cümleyi ekrandan ve çarpışma listesinden kaldır
         onChildRemoved(ideasRef, (snapshot) => {
             const key = snapshot.key;
             const removedEl = document.getElementById('bubble-' + key);
