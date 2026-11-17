@@ -41,28 +41,83 @@
         #entry-view h1 {
             font-size: 26px;
             line-height: 1.3;
-            margin-bottom: 20px;
+            margin-bottom: 18px;
             text-shadow: 0 2px 6px rgba(0,0,0,0.12);
         }
-        textarea {
+
+        /* Biçimlendirme Araç Çubuğu ve Metin Kutusu Kapsayıcısı */
+        .editor-box {
             width: 100%;
-            height: 135px;
-            padding: 16px;
+            background: #ffffff;
+            border-radius: 14px;
+            box-shadow: 0 8px 24px rgba(13, 71, 161, 0.18);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .editor-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: #f1f6fb;
+            border-bottom: 1px solid #dce7f2;
+        }
+        .format-group {
+            display: flex;
+            gap: 8px;
+        }
+        .fmt-btn {
+            width: 34px;
+            height: 32px;
+            border: 1px solid #cfd8dc;
+            background: #ffffff;
+            color: #0d47a1;
+            border-radius: 8px;
+            font-size: 15px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s, color 0.15s, border-color 0.15s;
+        }
+        .fmt-btn:active,
+        .fmt-btn.active {
+            background: #0d47a1;
+            color: #ffffff;
+            border-color: #0d47a1;
+        }
+        .fmt-bold { font-weight: 800; }
+        .fmt-italic { font-style: italic; font-family: Georgia, serif; }
+        .char-counter {
+            font-size: 12px;
+            color: #607d8b;
+            font-weight: 600;
+        }
+
+        /* Zengin Metin Yazma Alanı */
+        #sentenceEditor {
+            width: 100%;
+            height: 125px;
+            padding: 14px 16px;
             font-size: 16px;
             line-height: 1.5;
             font-family: inherit;
-            border-radius: 14px;
-            border: none;
-            outline: none;
-            resize: none;
-            box-shadow: 0 8px 24px rgba(13, 71, 161, 0.18);
             color: #222;
-            background: #ffffff;
+            text-align: left;
+            outline: none;
+            overflow-y: auto;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
-        textarea::placeholder {
+        #sentenceEditor:empty::before {
+            content: attr(data-placeholder);
             color: #607d8b;
             font-size: 15px;
+            pointer-events: none;
+            display: block;
         }
+
         .send-btn {
             width: 100%;
             padding: 16px;
@@ -227,6 +282,12 @@
         .bubble-text {
             flex: 1 1 auto;
         }
+        .bubble-text b, .bubble-text strong {
+            font-weight: 800;
+        }
+        .bubble-text i, .bubble-text em {
+            font-style: italic;
+        }
 
         /* Beğeni Butonu */
         .like-btn {
@@ -355,7 +416,16 @@
     <div id="entry-view">
         <div class="entry-center">
             <h1>Söz Sırası Sende, Cümleni Kur</h1>
-            <textarea id="sentenceInput" placeholder="Buraya yazdıkların tamamen gizlidir, kimin yazdığı kesinlikle görünmez. İçinden geçen cümleyi rahatça yazabilirsin..." maxlength="140"></textarea>
+            <div class="editor-box">
+                <div class="editor-toolbar">
+                    <div class="format-group">
+                        <button type="button" id="boldBtn" class="fmt-btn fmt-bold" title="Kalın Yaz" onmousedown="event.preventDefault(); applyFormat('bold')">K</button>
+                        <button type="button" id="italicBtn" class="fmt-btn fmt-italic" title="İtalik Yaz" onmousedown="event.preventDefault(); applyFormat('italic')">İ</button>
+                    </div>
+                    <span id="charCount" class="char-counter">0 / 140</span>
+                </div>
+                <div id="sentenceEditor" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Buraya yazdıkların tamamen gizlidir, kimin yazdığı kesinlikle görünmez. İçinden geçen cümleyi rahatça yazabilirsin..."></div>
+            </div>
             <button id="sendBtn" class="send-btn" type="button">Gönder</button>
             <div class="spelling-note">Cümleni kurarken büyük harf, noktalama işaretleri ve yazım kurallarına özen göster.</div>
             <div id="error-msg"></div>
@@ -412,12 +482,104 @@
             '#f8bbd0', '#e1bee7', '#dcedc8'
         ];
 
+        const MAX_CHARS = 140;
         const sentencesMap = new Map();
         const likedKeys = new Set(JSON.parse(localStorage.getItem('likedSentences') || '[]'));
         let colorIndex = 0;
         let isSubmitting = false;
         let lastSentText = '';
         let lastSentTime = 0;
+
+        const editor = document.getElementById('sentenceEditor');
+        const charCountEl = document.getElementById('charCount');
+        const boldBtn = document.getElementById('boldBtn');
+        const italicBtn = document.getElementById('italicBtn');
+
+        // Sadece kalın (b, strong) ve italik (i, em) etiketlerine izin veren güvenli temizleyici
+        function sanitizeFormattedHTML(rawHtml) {
+            const temp = document.createElement('div');
+            temp.innerHTML = rawHtml;
+
+            function cleanNode(node) {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    return document.createTextNode(node.textContent);
+                }
+                if (node.nodeType !== Node.ELEMENT_NODE) {
+                    return document.createDocumentFragment();
+                }
+
+                const tag = node.tagName.toLowerCase();
+                let targetTag = null;
+                if (tag === 'b' || tag === 'strong') targetTag = 'b';
+                else if (tag === 'i' || tag === 'em') targetTag = 'i';
+                else if (tag === 'br') return document.createElement('br');
+
+                const container = targetTag ? document.createElement(targetTag) : document.createDocumentFragment();
+                if ((tag === 'div' || tag === 'p') && node.previousSibling) {
+                    container.appendChild(document.createTextNode(' '));
+                }
+
+                for (const child of [...node.childNodes]) {
+                    container.appendChild(cleanNode(child));
+                }
+                return container;
+            }
+
+            const resultDiv = document.createElement('div');
+            for (const child of [...temp.childNodes]) {
+                resultDiv.appendChild(cleanNode(child));
+            }
+            return resultDiv.innerHTML.trim();
+        }
+
+        function updateToolbarState() {
+            boldBtn.classList.toggle('active', document.queryCommandState('bold'));
+            italicBtn.classList.toggle('active', document.queryCommandState('italic'));
+        }
+
+        function updateCharCounter() {
+            const plainText = editor.innerText.replace(/\n/g, '');
+            charCountEl.innerText = `${plainText.length} / ${MAX_CHARS}`;
+        }
+
+        window.applyFormat = function(command) {
+            editor.focus();
+            document.execCommand(command, false, null);
+            updateToolbarState();
+        };
+
+        // Yapıştırma sırasında dış stilleri (renk, font boyutu vb.) temizle
+        editor.addEventListener('paste', (e) => {
+            e.preventDefault();
+            const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+            const currentLen = editor.innerText.replace(/\n/g, '').length;
+            const remaining = MAX_CHARS - currentLen;
+            if (remaining > 0) {
+                document.execCommand('insertText', false, text.slice(0, remaining));
+            }
+        });
+
+        // Karakter sınırı kontrolü
+        editor.addEventListener('beforeinput', (e) => {
+            if (e.inputType && e.inputType.startsWith('insert')) {
+                const selectionLen = window.getSelection().toString().length;
+                const currentLen = editor.innerText.replace(/\n/g, '').length - selectionLen;
+                if (currentLen >= MAX_CHARS) {
+                    e.preventDefault();
+                }
+            }
+        });
+
+        editor.addEventListener('input', () => {
+            if (editor.innerText.trim() === '' && editor.innerHTML !== '') {
+                editor.innerHTML = '';
+            }
+            updateCharCounter();
+            updateToolbarState();
+        });
+
+        editor.addEventListener('keyup', updateToolbarState);
+        editor.addEventListener('mouseup', updateToolbarState);
 
         function saveLikedKeys() {
             localStorage.setItem('likedSentences', JSON.stringify([...likedKeys]));
@@ -483,7 +645,8 @@
 
             const textSpan = document.createElement('span');
             textSpan.className = 'bubble-text';
-            textSpan.innerText = val.text;
+            // Güvenli kalın/italik biçimlendirmesiyle havuza yansıt
+            textSpan.innerHTML = sanitizeFormattedHTML(val.text);
             bubble.appendChild(textSpan);
 
             const likeBtn = document.createElement('button');
@@ -543,25 +706,29 @@
             if (e) e.preventDefault();
             if (isSubmitting) return;
 
-            const input = document.getElementById('sentenceInput');
             const sendBtn = document.getElementById('sendBtn');
-            const text = input.value.trim();
-            if (!text) return;
+            const plainText = editor.innerText.trim();
+            if (!plainText) return;
+
+            const formattedHtml = sanitizeFormattedHTML(editor.innerHTML);
+            if (!formattedHtml) return;
 
             const now = Date.now();
-            if (text === lastSentText && (now - lastSentTime) < 4000) {
+            if (plainText === lastSentText && (now - lastSentTime) < 4000) {
                 return;
             }
 
             isSubmitting = true;
-            lastSentText = text;
+            lastSentText = plainText;
             lastSentTime = now;
             sendBtn.disabled = true;
             sendBtn.innerText = 'Gönderiliyor...';
 
-            push(ideasRef, { text: text, likes: 0, timestamp: now })
+            push(ideasRef, { text: formattedHtml, likes: 0, timestamp: now })
                 .then(() => {
-                    input.value = '';
+                    editor.innerHTML = '';
+                    updateCharCounter();
+                    updateToolbarState();
                     document.getElementById('error-msg').innerText = '';
                     document.getElementById('entry-view').style.display = 'none';
                     document.getElementById('pool-view').style.display = 'block';
@@ -579,7 +746,6 @@
 
         document.getElementById('sendBtn').addEventListener('click', handleSend);
 
-        // "+ Cümle Yaz" butonuna basıldığında yönetici oturumunu da otomatik sonlandırır
         window.openEntry = function() {
             resetAdminState();
             document.getElementById('pool-view').style.display = 'none';
