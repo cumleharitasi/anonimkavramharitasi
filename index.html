@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Canlı Cümle Havuzu</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -13,7 +13,6 @@
             height: 100vh;
             width: 100vw;
             overflow: hidden;
-            user-select: none;
         }
 
         /* 1. EKRAN: CÜMLE GİRİŞ BÖLÜMÜ */
@@ -50,7 +49,6 @@
             box-shadow: 0 8px 24px rgba(13, 71, 161, 0.18);
             color: #222;
             background: #ffffff;
-            user-select: text;
         }
         textarea::placeholder {
             color: #607d8b;
@@ -69,11 +67,17 @@
             font-weight: bold;
             cursor: pointer;
             box-shadow: 0 4px 14px rgba(13, 71, 161, 0.3);
-            transition: transform 0.1s, background 0.2s;
+            transition: transform 0.1s, background 0.2s, opacity 0.2s;
         }
         .send-btn:active {
             transform: scale(0.98);
             background: #082f6e;
+        }
+        .send-btn:disabled {
+            background: #5472d3;
+            opacity: 0.75;
+            cursor: not-allowed;
+            transform: none;
         }
         #error-msg {
             color: #ffebee;
@@ -102,18 +106,13 @@
             background: #b71c1c;
         }
 
-        /* 2. EKRAN: MERKEZDEN YAYILAN KAVRAM HARİTASI HAVUZU */
+        /* 2. EKRAN: DÜZENLİ SIRALI CÜMLE HAVUZU */
         #pool-view {
             display: none;
             position: relative;
             height: 100%;
             width: 100%;
-            background: radial-gradient(circle at center, #64b5f6 0%, #1976d2 100%);
-            overflow: hidden;
-            cursor: grab;
-        }
-        #pool-view:active {
-            cursor: grabbing;
+            background: linear-gradient(135deg, #42a5f5 0%, #1e88e5 100%);
         }
         .top-actions {
             position: fixed;
@@ -147,36 +146,31 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
         }
 
-        /* Kaydırılabilir Tuval Alanı */
-        #map-canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
+        /* Baloncukların Düzenli Yerleştiği Havuz Alanı */
+        #bubbles-container {
             width: 100%;
             height: 100%;
-            transform-origin: center center;
+            padding: 76px 24px 32px 24px;
+            overflow-y: auto;
+            display: flex;
+            flex-wrap: wrap;
+            align-content: flex-start;
+            justify-content: center;
+            gap: 16px;
         }
-
         .bubble {
-            position: absolute;
-            padding: 15px 20px;
+            position: relative;
+            padding: 16px 22px;
             border-radius: 22px;
-            font-size: 15px;
-            line-height: 1.4;
-            max-width: 240px;
-            min-width: 110px;
-            text-align: center;
+            font-size: 16px;
+            line-height: 1.45;
+            max-width: 300px;
             word-wrap: break-word;
-            box-shadow: 0 8px 20px rgba(13, 71, 161, 0.22);
-            border: 2px solid rgba(255,255,255,0.65);
-            transform: translate(-50%, -50%) scale(0);
-            animation: popCenter 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            overflow-wrap: break-word;
+            box-shadow: 0 6px 16px rgba(13, 71, 161, 0.16);
+            border: 2px solid rgba(255,255,255,0.55);
+            animation: popIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             cursor: default;
-            z-index: 5;
-        }
-        .bubble:hover {
-            z-index: 20;
-            box-shadow: 0 12px 26px rgba(13, 71, 161, 0.35);
         }
 
         /* Tekli Cümle Silme İkonu */
@@ -239,7 +233,6 @@
             outline: none;
             margin-bottom: 14px;
             text-align: center;
-            user-select: text;
         }
         .modal-card input:focus {
             border-color: #0d47a1;
@@ -266,9 +259,9 @@
             font-weight: bold;
         }
 
-        @keyframes popCenter {
-            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
-            100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.7); }
+            100% { opacity: 1; transform: scale(1); }
         }
     </style>
 </head>
@@ -278,19 +271,19 @@
     <div id="entry-view">
         <h1>Cümleni Yaz</h1>
         <textarea id="sentenceInput" placeholder="Buraya yazdıkların tamamen gizlidir, kimin yazdığı kesinlikle görünmez. İçinden geçen cümleyi rahatça yazabilirsin..." maxlength="140"></textarea>
-        <button class="send-btn" onclick="submitSentence()">Gönder</button>
+        <button id="sendBtn" class="send-btn" type="button">Gönder</button>
         <div id="error-msg"></div>
 
-        <button class="admin-login-btn" onclick="openAdminModal()">Yönetici Girişi</button>
+        <button class="admin-login-btn" type="button" onclick="openAdminModal()">Yönetici Girişi</button>
     </div>
 
-    <!-- 2. EKRAN: MERKEZDEN YAYILAN CÜMLE HAVUZU -->
+    <!-- 2. EKRAN: SIRALI CÜMLE HAVUZU -->
     <div id="pool-view">
         <div class="top-actions">
-            <button class="btn-clear-all" onclick="clearAllSentences()">Tümünü Temizle</button>
-            <button class="btn-add" onclick="openEntry()">+ Cümle Yaz</button>
+            <button class="btn-clear-all" type="button" onclick="clearAllSentences()">Tümünü Temizle</button>
+            <button class="btn-add" type="button" onclick="openEntry()">+ Cümle Yaz</button>
         </div>
-        <div id="map-canvas"></div>
+        <div id="bubbles-container"></div>
     </div>
 
     <!-- YÖNETİCİ ŞİFRE PENCERESİ -->
@@ -299,8 +292,8 @@
             <h3>Yönetici Girişi</h3>
             <input type="password" id="adminPassInput" placeholder="Şifreyi giriniz..." onkeypress="if(event.key==='Enter') checkAdminPassword()">
             <div class="modal-btns">
-                <button class="btn-cancel" onclick="closeAdminModal()">İptal</button>
-                <button class="btn-confirm" onclick="checkAdminPassword()">Giriş Yap</button>
+                <button class="btn-cancel" type="button" onclick="closeAdminModal()">İptal</button>
+                <button class="btn-confirm" type="button" onclick="checkAdminPassword()">Giriş Yap</button>
             </div>
             <div id="admin-error"></div>
         </div>
@@ -330,71 +323,22 @@
             '#f8bbd0', '#e1bee7', '#dcedc8'
         ];
 
-        const placedBoxes = [];
+        const renderedKeys = new Set();
         let colorIndex = 0;
+        let isSubmitting = false;
+        let lastSentText = '';
+        let lastSentTime = 0;
 
-        function isOverlapping(x, y, w, h) {
-            const pad = 16;
-            for (const box of placedBoxes) {
-                if (
-                    Math.abs(x - box.x) * 2 < (w + box.w + pad) &&
-                    Math.abs(y - box.y) * 2 < (h + box.h + pad)
-                ) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        function findFreePosition(w, h) {
-            if (placedBoxes.length === 0) {
-                return { x: 0, y: 0 };
-            }
-            let angle = placedBoxes.length * 2.39996;
-            let radius = 40;
-            while (radius < 4000) {
-                const x = Math.cos(angle) * radius;
-                const y = Math.sin(angle) * radius * 0.82;
-                if (!isOverlapping(x, y, w, h)) {
-                    return { x, y };
-                }
-                angle += 0.35;
-                radius += 4.5;
-            }
-            return { x: 0, y: 0 };
-        }
-
-        // Haritada genel gezinme (Pan) - baloncuk üzerinden tutulsa bile tüm tuvali kaydırır
-        let panX = 0, panY = 0;
-        const canvas = document.getElementById('map-canvas');
-        const poolView = document.getElementById('pool-view');
-
-        function updateCanvasTransform() {
-            canvas.style.transform = `translate(${panX}px, ${panY}px)`;
-        }
-
-        let isPanning = false, startPanX = 0, startPanY = 0;
-        poolView.addEventListener('pointerdown', (e) => {
-            if (e.target.closest('button')) return;
-            isPanning = true;
-            startPanX = e.clientX - panX;
-            startPanY = e.clientY - panY;
-        });
-        window.addEventListener('pointermove', (e) => {
-            if (!isPanning) return;
-            panX = e.clientX - startPanX;
-            panY = e.clientY - startPanY;
-            updateCanvasTransform();
-        });
-        window.addEventListener('pointerup', () => { isPanning = false; });
-
-        // Yeni cümle eklendiğinde merkezden yayılacak şekilde sabit yerleştir
+        // Veritabanından gelen her yeni cümleyi sıralı havuza ekle
         onChildAdded(ideasRef, (snapshot) => {
             const val = snapshot.val();
             const key = snapshot.key;
-            if (!val || !val.text) return;
+            if (!val || !val.text || renderedKeys.has(key)) return;
+            renderedKeys.add(key);
 
             colorIndex++;
+            const container = document.getElementById('bubbles-container');
+            
             const bubble = document.createElement('div');
             bubble.className = 'bubble';
             bubble.id = 'bubble-' + key;
@@ -406,6 +350,7 @@
 
             const delBtn = document.createElement('button');
             delBtn.className = 'delete-single-btn';
+            delBtn.type = 'button';
             delBtn.innerText = '✕';
             delBtn.title = 'Bu cümleyi sil';
             delBtn.onclick = function() {
@@ -413,37 +358,40 @@
             };
             bubble.appendChild(delBtn);
 
-            bubble.style.visibility = 'hidden';
-            bubble.style.left = '50%';
-            bubble.style.top = '50%';
-            canvas.appendChild(bubble);
-
-            const w = bubble.offsetWidth || 180;
-            const h = bubble.offsetHeight || 65;
-            const pos = findFreePosition(w, h);
-
-            placedBoxes.push({ key, x: pos.x, y: pos.y, w, h });
-
-            bubble.style.left = `calc(50% + ${pos.x}px)`;
-            bubble.style.top = `calc(50% + ${pos.y}px)`;
-            bubble.style.visibility = 'visible';
+            container.appendChild(bubble);
         });
 
+        // Silinen cümleyi tüm cihazlardan kaldır
         onChildRemoved(ideasRef, (snapshot) => {
             const key = snapshot.key;
+            renderedKeys.delete(key);
             const removedEl = document.getElementById('bubble-' + key);
             if (removedEl) removedEl.remove();
-
-            const idx = placedBoxes.findIndex(b => b.key === key);
-            if (idx !== -1) placedBoxes.splice(idx, 1);
         });
 
-        window.submitSentence = function() {
+        // Çift gönderim korumalı cümle gönderme fonksiyonu
+        function handleSend(e) {
+            if (e) e.preventDefault();
+            if (isSubmitting) return;
+
             const input = document.getElementById('sentenceInput');
+            const sendBtn = document.getElementById('sendBtn');
             const text = input.value.trim();
             if (!text) return;
 
-            push(ideasRef, { text: text, timestamp: Date.now() })
+            // Aynı metnin 4 saniye içinde tekrar gönderilmesini engelle
+            const now = Date.now();
+            if (text === lastSentText && (now - lastSentTime) < 4000) {
+                return;
+            }
+
+            isSubmitting = true;
+            lastSentText = text;
+            lastSentTime = now;
+            sendBtn.disabled = true;
+            sendBtn.innerText = 'Gönderiliyor...';
+
+            push(ideasRef, { text: text, timestamp: now })
                 .then(() => {
                     input.value = '';
                     document.getElementById('error-msg').innerText = '';
@@ -451,9 +399,17 @@
                     document.getElementById('pool-view').style.display = 'block';
                 })
                 .catch((err) => {
+                    lastSentText = '';
                     document.getElementById('error-msg').innerText = 'Hata oluştu: ' + err.message;
+                })
+                .finally(() => {
+                    isSubmitting = false;
+                    sendBtn.disabled = false;
+                    sendBtn.innerText = 'Gönder';
                 });
-        };
+        }
+
+        document.getElementById('sendBtn').addEventListener('click', handleSend);
 
         window.openEntry = function() {
             document.getElementById('pool-view').style.display = 'none';
