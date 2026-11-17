@@ -35,9 +35,10 @@
         textarea {
             width: 100%;
             max-width: 450px;
-            height: 130px;
+            height: 135px;
             padding: 16px;
-            font-size: 17px;
+            font-size: 16px;
+            line-height: 1.5;
             font-family: inherit;
             border-radius: 14px;
             border: none;
@@ -46,6 +47,10 @@
             box-shadow: 0 8px 24px rgba(0,0,0,0.25);
             color: #222;
             background: #ffffff;
+        }
+        textarea::placeholder {
+            color: #607d8b;
+            font-size: 15px;
         }
         .send-btn {
             width: 100%;
@@ -144,7 +149,7 @@
     <!-- 1. EKRAN: CÜMLE GİRİŞ BÖLÜMÜ -->
     <div id="entry-view">
         <h1>Cümleni Yaz</h1>
-        <textarea id="sentenceInput" maxlength="140"></textarea>
+        <textarea id="sentenceInput" placeholder="Buraya yazdıkların tamamen gizlidir, kimin yazdığı kesinlikle görünmez. İçinden geçen cümleyi rahatça yazabilirsin..." maxlength="140"></textarea>
         <button class="send-btn" onclick="submitSentence()">Gönder ve Havuzu Gör</button>
         <div id="error-msg"></div>
     </div>
