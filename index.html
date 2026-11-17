@@ -2,30 +2,40 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Canlı Cümle Havuzu</title>
-    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
     <style>
-        * { box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background: #f4f7f6; overflow: hidden; }
-        
-        /* 1. AŞAMA: TELEFON CÜMLE GİRİŞ EKRANI */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: #f4f7f6;
+            color: #222;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+        }
+
+        /* 1. EKRAN: CÜMLE GİRİŞ BÖLÜMÜ */
         #entry-view {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            height: 100%;
+            width: 100%;
             padding: 24px;
             text-align: center;
             background: linear-gradient(135deg, #46178f 0%, #2b0d59 100%);
             color: white;
         }
-        #entry-view h2 { margin: 0 0 20px 0; font-size: 26px; }
+        #entry-view h1 {
+            font-size: 28px;
+            margin-bottom: 20px;
+        }
         textarea {
             width: 100%;
-            max-width: 420px;
-            height: 120px;
+            max-width: 450px;
+            height: 130px;
             padding: 16px;
             font-size: 17px;
             font-family: inherit;
@@ -33,11 +43,12 @@
             border: none;
             outline: none;
             resize: none;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+            color: #222;
         }
-        button.send-btn {
+        .send-btn {
             width: 100%;
-            max-width: 420px;
+            max-width: 450px;
             padding: 16px;
             margin-top: 16px;
             font-size: 18px;
@@ -48,109 +59,135 @@
             font-weight: bold;
             cursor: pointer;
             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            transition: transform 0.15s, background 0.2s;
+            transition: transform 0.1s, background 0.2s;
         }
-        button.send-btn:active { transform: scale(0.97); background: #1e6e09; }
-        .anon-note { font-size: 13px; opacity: 0.8; margin-top: 12px; }
-        #error-msg { color: #ff8a80; font-size: 14px; margin-top: 10px; font-weight: bold; }
+        .send-btn:active {
+            transform: scale(0.98);
+            background: #1e6e09;
+        }
+        .anon-note {
+            font-size: 13px;
+            opacity: 0.85;
+            margin-top: 14px;
+        }
+        .skip-link {
+            margin-top: 24px;
+            color: rgba(255, 255, 255, 0.75);
+            font-size: 14px;
+            text-decoration: underline;
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+        #error-msg {
+            color: #ff8a80;
+            font-size: 14px;
+            margin-top: 10px;
+            font-weight: bold;
+        }
 
-        /* 2. AŞAMA: CÜMLE HAVUZU EKRANI */
+        /* 2. EKRAN: CÜMLE HAVUZU (KAVRAM HARİTASI GÖRÜNÜMÜ) */
         #pool-view {
             display: none;
-            width: 100vw;
-            height: 100vh;
-            position: relative;
-            background: #ffffff;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
+            background: radial-gradient(circle at center, #ffffff 0%, #eef2f5 100%);
         }
-        #mynetwork { width: 100%; height: 100%; }
-
-        /* Katılımcı Havuz Üst Bilgi Çubuğu */
-        #student-pool-header {
-            position: absolute;
-            top: 12px;
-            left: 12px;
-            right: 12px;
-            z-index: 10;
+        #pool-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: rgba(255, 255, 255, 0.92);
-            padding: 10px 16px;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 14px 20px;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            z-index: 10;
         }
-        #student-pool-header span { font-weight: bold; color: #46178f; font-size: 15px; }
-        .btn-new-idea {
+        #pool-header h2 {
+            font-size: 18px;
+            color: #46178f;
+        }
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .btn-add {
             background: #46178f;
             color: white;
             border: none;
-            padding: 8px 14px;
+            padding: 9px 14px;
             border-radius: 8px;
-            font-size: 13px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .btn-clear {
+            background: #d32f2f;
+            color: white;
+            border: none;
+            padding: 9px 14px;
+            border-radius: 8px;
+            font-size: 14px;
             font-weight: bold;
             cursor: pointer;
         }
 
-        /* Sadece Tahta (?tahta=1) Görünümündeki Temizleme Butonu */
-        #board-controls {
-            display: none;
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            z-index: 10;
-            background: rgba(255,255,255,0.95);
-            padding: 8px;
-            border-radius: 10px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        /* Baloncukların Serbestçe Yerleştiği Havuz Alanı */
+        #bubbles-container {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+            display: flex;
+            flex-wrap: wrap;
+            align-content: flex-start;
+            justify-content: center;
+            gap: 16px;
         }
-        .btn-clear { padding: 10px 16px; font-size: 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; background: #d32f2f; }
+        .bubble {
+            padding: 16px 22px;
+            border-radius: 24px;
+            font-size: 16px;
+            line-height: 1.4;
+            max-width: 280px;
+            word-wrap: break-word;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+            border: 2px solid rgba(0,0,0,0.06);
+            animation: popIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: transform 0.2s;
+            cursor: default;
+        }
+        .bubble:hover {
+            transform: scale(1.04);
+        }
 
-        #qr-box {
-            display: none;
-            position: absolute;
-            bottom: 15px;
-            left: 15px;
-            z-index: 10;
-            background: white;
-            padding: 12px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-            text-align: center;
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.6); }
+            100% { opacity: 1; transform: scale(1); }
         }
-        #qr-box img { width: 130px; height: 130px; display: block; margin: 0 auto 5px; }
-        #qr-box span { font-size: 12px; font-weight: bold; color: #333; }
     </style>
 </head>
 <body>
 
-    <!-- 1. EKRAN: CÜMLE GİRİŞ BÖLÜMÜ (TELEFONLAR İÇİN) -->
+    <!-- 1. EKRAN: CÜMLE GİRİŞ BÖLÜMÜ -->
     <div id="entry-view">
-        <h2>Cümleni Yaz</h2>
-        <textarea id="sentenceInput" placeholder="Düşünceni veya cümleni buraya yaz..." maxlength="110"></textarea>
-        <button class="send-btn" onclick="submitAndShowPool()">Gönder ve Havuzu Gör</button>
-        <div class="anon-note">🔒 Gönderdiğin cümle tamamen anonim olarak paylaşılır.</div>
+        <h1>Cümleni Yaz</h1>
+        <textarea id="sentenceInput" placeholder="Düşünceni buraya yaz..." maxlength="140"></textarea>
+        <button class="send-btn" onclick="submitSentence()">Gönder ve Havuzu Gör</button>
+        <div class="anon-note">🔒 Gönderdiğin cümle tamamen anonimdir.</div>
+        <button class="skip-link" onclick="openPoolOnly()">Cümle yazmadan doğrudan havuzu izle</button>
         <div id="error-msg"></div>
     </div>
 
-    <!-- 2. EKRAN: BAĞIMSIZ CÜMLE HAVUZU (HEM TELEFON HEM TAHTA) -->
+    <!-- 2. EKRAN: CÜMLE HAVUZU -->
     <div id="pool-view">
-        <!-- Katılımcı Telefondayken Görünecek Üst Bar -->
-        <div id="student-pool-header">
-            <span>Canlı Cümle Havuzu</span>
-            <button class="btn-new-idea" onclick="backToEntry()">+ Yeni Cümle Yaz</button>
+        <div id="pool-header">
+            <h2>Canlı Cümle Havuzu (<span id="count">0</span>)</h2>
+            <div class="header-buttons">
+                <button class="btn-add" onclick="openEntry()">+ Cümle Yaz</button>
+                <button class="btn-clear" onclick="clearPool()">Temizle</button>
+            </div>
         </div>
-
-        <!-- Sadece Akıllı Tahtada (?tahta=1) Görünecek Temizleme Butonu -->
-        <div id="board-controls">
-            <button class="btn-clear" onclick="clearBoard()">Havuzu Temizle</button>
-        </div>
-
-        <div id="qr-box">
-            <img id="qr-img" src="" alt="QR Kod">
-            <span>Katılmak için okutun</span>
-        </div>
-
-        <div id="mynetwork"></div>
+        <div id="bubbles-container"></div>
     </div>
 
     <script type="module">
@@ -171,26 +208,32 @@
         const db = getDatabase(app);
         const ideasRef = ref(db, 'cumleler');
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const isBoard = urlParams.get('tahta') === '1';
-        let networkInitialized = false;
+        const colors = [
+            '#e1bee7', '#bbdefb', '#c8e6c9', 
+            '#fff9c4', '#ffccbc', '#b2ebf2', 
+            '#f8bbd0', '#d1c4e9', '#dcedc8'
+        ];
+        let sentenceCount = 0;
 
-        // Tahta linkiyle (?tahta=1) girildiyse doğrudan havuzu aç
-        if (isBoard) {
-            document.getElementById('entry-view').style.display = 'none';
-            document.getElementById('pool-view').style.display = 'block';
-            document.getElementById('student-pool-header').style.display = 'none';
-            document.getElementById('board-controls').style.display = 'block';
-            document.getElementById('qr-box').style.display = 'block';
+        // Veritabanına eklenen her cümleyi anlık olarak havuza baloncuk şeklinde ekle
+        onChildAdded(ideasRef, (snapshot) => {
+            const val = snapshot.val();
+            if (!val || !val.text) return;
 
-            const studentUrl = window.location.href.split('?')[0];
-            document.getElementById('qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(studentUrl)}`;
+            sentenceCount++;
+            document.getElementById('count').innerText = sentenceCount;
+
+            const container = document.getElementById('bubbles-container');
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            bubble.innerText = val.text;
+            bubble.style.backgroundColor = colors[sentenceCount % colors.length];
             
-            initNetwork();
-        }
+            container.appendChild(bubble);
+        });
 
-        // Telefondan Cümleyi Gönder ve Yazma Ekranını Kapatıp Havuzu Aç
-        window.submitAndShowPool = function() {
+        // Cümle gönderme ve havuza geçiş
+        window.submitSentence = function() {
             const input = document.getElementById('sentenceInput');
             const text = input.value.trim();
             if (!text) return;
@@ -199,78 +242,32 @@
                 .then(() => {
                     input.value = '';
                     document.getElementById('error-msg').innerText = '';
-                    document.getElementById('entry-view').style.display = 'none';
-                    document.getElementById('pool-view').style.display = 'block';
-                    
-                    if (!networkInitialized) {
-                        initNetwork();
-                    }
+                    openPoolOnly();
                 })
                 .catch((err) => {
-                    document.getElementById('error-msg').innerText = 'Gönderilemedi: ' + err.message;
+                    document.getElementById('error-msg').innerText = 'Hata oluştu: ' + err.message;
                 });
         };
 
-        // Tekrar yeni cümle yazma ekranına dön
-        window.backToEntry = function() {
+        window.openPoolOnly = function() {
+            document.getElementById('entry-view').style.display = 'none';
+            document.getElementById('pool-view').style.display = 'flex';
+        };
+
+        window.openEntry = function() {
             document.getElementById('pool-view').style.display = 'none';
             document.getElementById('entry-view').style.display = 'flex';
         };
 
-        // Tahta: Havuzu Temizle
-        window.clearBoard = function() {
-            if (confirm("Havuzdaki tüm cümleler silinecek. Emin misin?")) {
-                remove(ideasRef).then(() => location.reload());
+        window.clearPool = function() {
+            if (confirm("Havuzdaki tüm cümleler silinecek. Emin misiniz?")) {
+                remove(ideasRef).then(() => {
+                    document.getElementById('bubbles-container').innerHTML = '';
+                    sentenceCount = 0;
+                    document.getElementById('count').innerText = '0';
+                });
             }
         };
-
-        // Bağımsız Cümle Baloncukları Oluşturucu
-        function initNetwork() {
-            networkInitialized = true;
-            const nodes = new vis.DataSet([]);
-            const edges = new vis.DataSet([]); // Çizgiler tamamen boş
-
-            const container = document.getElementById('mynetwork');
-            const network = new vis.Network(container, { nodes: nodes, edges: edges }, {
-                nodes: {
-                    shape: 'box',
-                    margin: 14,
-                    borderWidth: 2,
-                    borderRadius: 10,
-                    font: { size: 16, face: 'Segoe UI', color: '#222' },
-                    widthConstraint: { maximum: 220 },
-                    shadow: { enabled: true, color: 'rgba(0,0,0,0.1)', size: 6, x: 2, y: 2 }
-                },
-                physics: {
-                    enabled: true,
-                    solver: 'repulsion', // Balonların üst üste binmesini önler, birbirini hafifçe iter
-                    repulsion: {
-                        nodeDistance: 140,
-                        centralGravity: 0.15, // Balonların ekran dışına kaçıp dağılmasını önler, merkezde toplar
-                        springLength: 100,
-                        damping: 0.2
-                    }
-                }
-            });
-
-            const colors = ['#e1bee7', '#bbdefb', '#c8e6c9', '#fff9c4', '#ffccbc', '#b2ebf2', '#f8bbd0'];
-            let nodeId = 1;
-
-            onChildAdded(ideasRef, (snapshot) => {
-                const val = snapshot.val();
-                const randomColor = colors[nodeId % colors.length];
-                nodes.add({
-                    id: nodeId,
-                    label: val.text,
-                    color: {
-                        background: randomColor,
-                        border: 'rgba(0,0,0,0.15)',
-                        highlight: { background: randomColor, border: '#46178f' }
-                    }
-                });
-                nodeId++;
-            });
-        }
     </script>
 </body>
 </html>
