@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canlı Kavram Haritası</title>
+    <!-- Kavram Haritası Kütüphanesi (Vis.js) -->
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style>
+        body { font-family: sans-serif; margin: 0; padding: 0; background: #f4f7f6; }
+        /* Telefon Görünümü */
+        #student-view { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; padding: 20px; box-sizing: border-box; }
+        input, button { width: 100%; max-width: 400px; padding: 15px; margin: 10px 0; font-size: 16px; border-radius: 8px; border: 1px solid #ccc; }
+        button { background: #46178f; color: white; border: none; font-weight: bold; cursor: pointer; }
+        button:active { background: #33106b; }
+        /* Tahta Görünümü */
+        #board-view { display: none; width: 100vw; height: 100vh; }
+        #mynetwork { width: 100%; height: 100%; }
+    </style>
+</head>
+<body>
+
+    <!-- KATILIMCI (TELEFON) EKRANI -->
+    <div id="student-view">
+        <h2>Fikrini Tahtaya Gönder</h2>
+        <input type="text" id="sentenceInput" placeholder="Cümleni buraya yaz..." maxlength="80">
+        <button onclick="sendSentence()">Gönder</button>
+        <p id="status" style="color: green;"></p>
+    </div>
+
+    <!-- TAHTA (KAVRAM HARİTASI) EKRANI -->
+    <div id="board-view">
+        <div id="mynetwork"></div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        // BURAYA KENDİ FIREBASE BİLGİLERİNİ YAPIŞTIRACAKSIN
+        const firebaseConfig = {
+            apiKey: "SENIN_API_KEY",
+            authDomain: "PROJE_ID.firebaseapp.com",
+            databaseURL: "https://PROJE_ID-default-rtdb.firebaseio.com",
+            projectId: "PROJE_ID",
+            storageBucket: "PROJE_ID.appspot.com",
+            messagingSenderId: "123456",
+            appId: "1:123456:web:abcdef"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const ideasRef = ref(db, 'cumleler');
+
+        // URL'de ?tahta=1 varsa tahta ekranını aç, yoksa telefon ekranını göster
+        const urlParams = new URLSearchParams(window.location.search);
+        const isBoard = urlParams.get('tahta') === '1';
+
+        if (isBoard) {
+            document.getElementById('student-view').style.display = 'none';
+            document.getElementById('board-view').style.display = 'block';
+            initBoard();
+        }
+
+        // Telefondan Veri Gönderme Fonksiyonu
+        window.sendSentence = function() {
+            const input = document.getElementById('sentenceInput');
+            const text = input.value.trim();
+            if (!text) return;
+
+            push(ideasRef, { text: text, timestamp: Date.now() });
+            input.value = '';
+            document.getElementById('status').innerText = 'Tahtaya gönderildi!';
+            setTimeout(() => document.getElementById('status').innerText = '', 2000);
+        }
+
+        // Tahtada Kavram Haritasını Başlatma ve Dinleme
+        function initBoard() {
+            const nodes = new vis.DataSet([
+                { id: 0, label: 'ANA KONU', color: '#ff5722', font: { color: 'white', size: 24 } }
+            ]);
+            const edges = new vis.DataSet([]);
+
+            const container = document.getElementById('mynetwork');
+            const data = { nodes: nodes, edges: edges };
+            const options = {
+                nodes: { shape: 'box', margin: 12, font: { size: 16 } },
+                physics: { stabilization: false, barnesHut: { springLength: 150 } }
+            };
+            const network = new vis.Network(container, data, options);
+
+            let nodeId = 1;
+            // Veritabanına yeni cümle eklendikçe haritaya baloncuk ekle
+            onChildAdded(ideasRef, (snapshot) => {
+                const val = snapshot.val();
+                nodes.add({ id: nodeId, label: val.text, color: '#e1bee7' });
+                edges.add({ from: 0, to: nodeId });
+                nodeId++;
+            });
+        }
+    </script>
+</body>
+</html>
