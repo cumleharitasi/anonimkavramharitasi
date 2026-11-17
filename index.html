@@ -132,22 +132,22 @@
         }
         .top-actions {
             position: fixed;
-            top: 16px;
+            top: 14px;
             right: 16px;
+            left: 16px;
             z-index: 50;
             display: flex;
             flex-wrap: wrap;
             justify-content: flex-end;
             gap: 8px;
-            left: 16px;
         }
         .btn-add {
             background: #0d47a1;
             color: white;
             border: none;
-            padding: 10px 14px;
+            padding: 9px 14px;
             border-radius: 10px;
-            font-size: 13.5px;
+            font-size: 13px;
             font-weight: bold;
             cursor: pointer;
             box-shadow: 0 4px 12px rgba(13, 71, 161, 0.3);
@@ -157,9 +157,9 @@
             background: #ef6c00;
             color: white;
             border: none;
-            padding: 10px 14px;
+            padding: 9px 14px;
             border-radius: 10px;
-            font-size: 13.5px;
+            font-size: 13px;
             font-weight: bold;
             cursor: pointer;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
@@ -172,9 +172,21 @@
             background: #d32f2f;
             color: white;
             border: none;
-            padding: 10px 14px;
+            padding: 9px 14px;
             border-radius: 10px;
-            font-size: 13.5px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        }
+        .btn-admin-logout {
+            display: none;
+            background: #37474f;
+            color: white;
+            border: none;
+            padding: 9px 14px;
+            border-radius: 10px;
+            font-size: 13px;
             font-weight: bold;
             cursor: pointer;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
@@ -184,7 +196,7 @@
         #bubbles-container {
             width: 100%;
             height: 100%;
-            padding: 76px 28px 32px 28px;
+            padding: 78px 24px 32px 24px;
             overflow-y: auto;
             display: flex;
             flex-wrap: wrap;
@@ -195,7 +207,7 @@
         }
         .bubble {
             position: relative;
-            padding: 14px 20px;
+            padding: 13px 18px;
             border-radius: 20px;
             font-size: 16px;
             line-height: 1.45;
@@ -205,11 +217,44 @@
             overflow-wrap: break-word;
             box-shadow: 0 6px 16px rgba(13, 71, 161, 0.16);
             border: 2px solid rgba(255,255,255,0.55);
+            display: inline-flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
             animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             cursor: default;
         }
+        .bubble-text {
+            flex: 1 1 auto;
+        }
 
-        /* Tekli Cümle Silme İkonu (Sadece Silme Modu Açıldığında Görünür) */
+        /* Beğeni Butonu */
+        .like-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(255, 255, 255, 0.78);
+            border: 1px solid rgba(13, 71, 161, 0.18);
+            border-radius: 14px;
+            padding: 4px 10px;
+            font-size: 13px;
+            font-weight: bold;
+            color: #37474f;
+            cursor: pointer;
+            transition: transform 0.12s, background 0.2s, color 0.2s;
+            flex-shrink: 0;
+            margin-left: auto;
+        }
+        .like-btn:active {
+            transform: scale(0.9);
+        }
+        .like-btn.liked {
+            background: #ffebee;
+            border-color: #ef9a9a;
+            color: #c62828;
+        }
+
+        /* Tekli Cümle Silme İkonu */
         .delete-single-btn {
             display: none;
             position: absolute;
@@ -227,12 +272,14 @@
             text-align: center;
             cursor: pointer;
             box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+            z-index: 5;
         }
         body.admin-mode.delete-active .delete-single-btn {
             display: block;
         }
         body.admin-mode .btn-toggle-delete,
-        body.admin-mode .btn-clear-all {
+        body.admin-mode .btn-clear-all,
+        body.admin-mode .btn-admin-logout {
             display: block;
         }
 
@@ -322,6 +369,7 @@
         <div class="top-actions">
             <button id="toggleDeleteBtn" class="btn-toggle-delete" type="button" onclick="toggleDeleteMode()">Cümle Seç / Sil</button>
             <button class="btn-clear-all" type="button" onclick="clearAllSentences()">Tümünü Temizle</button>
+            <button class="btn-admin-logout" type="button" onclick="logoutAdmin()">Yönetici Çıkışı</button>
             <button class="btn-add" type="button" onclick="openEntry()">+ Cümle Yaz</button>
         </div>
         <div id="bubbles-container"></div>
@@ -342,7 +390,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, push, onChildAdded, onChildRemoved, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getDatabase, ref, push, onChildAdded, onChildChanged, onChildRemoved, remove, runTransaction } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCKyoNQaWgh61lLY24ard-Q5WCS3CdIn6k",
@@ -364,29 +412,93 @@
             '#f8bbd0', '#e1bee7', '#dcedc8'
         ];
 
-        const renderedKeys = new Set();
+        // Cümle verilerini ve sıralamayı hafızada tutma
+        const sentencesMap = new Map();
+        const likedKeys = new Set(JSON.parse(localStorage.getItem('likedSentences') || '[]'));
         let colorIndex = 0;
         let isSubmitting = false;
         let lastSentText = '';
         let lastSentTime = 0;
 
+        function saveLikedKeys() {
+            localStorage.setItem('likedSentences', JSON.stringify([...likedKeys]));
+        }
+
+        // En çok beğeni alandan en aza doğru baloncukları yeniden sırala
+        function reorderBubbles() {
+            const container = document.getElementById('bubbles-container');
+            const sortedItems = [...sentencesMap.values()].sort((a, b) => {
+                if (b.likes !== a.likes) {
+                    return b.likes - a.likes; // Çok beğeni alan en başa
+                }
+                return a.order - b.order; // Beğeniler eşitse ilk yazılan önde
+            });
+
+            for (const item of sortedItems) {
+                container.appendChild(item.element);
+            }
+        }
+
+        // Beğeni ekleme / geri alma işlemi
+        function toggleLike(key) {
+            const isCurrentlyLiked = likedKeys.has(key);
+            const delta = isCurrentlyLiked ? -1 : 1;
+
+            if (isCurrentlyLiked) {
+                likedKeys.delete(key);
+            } else {
+                likedKeys.add(key);
+            }
+            saveLikedKeys();
+
+            const item = sentencesMap.get(key);
+            if (item) {
+                const newCount = Math.max(0, item.likes + delta);
+                item.likes = newCount;
+                updateLikeButtonUI(item.likeBtn, key, newCount);
+                reorderBubbles();
+            }
+
+            const likesRef = ref(db, 'cumleler/' + key + '/likes');
+            runTransaction(likesRef, (currentLikes) => {
+                return Math.max(0, (currentLikes || 0) + delta);
+            });
+        }
+
+        function updateLikeButtonUI(btn, key, count) {
+            const isLiked = likedKeys.has(key);
+            btn.classList.toggle('liked', isLiked);
+            btn.innerHTML = `${isLiked ? '❤️' : '🤍'} <span>${count}</span>`;
+        }
+
+        // Yeni cümle eklendiğinde oluştur ve sırala
         onChildAdded(ideasRef, (snapshot) => {
             const val = snapshot.val();
             const key = snapshot.key;
-            if (!val || !val.text || renderedKeys.has(key)) return;
-            renderedKeys.add(key);
+            if (!val || !val.text || sentencesMap.has(key)) return;
 
             colorIndex++;
-            const container = document.getElementById('bubbles-container');
-            
+            const likesCount = val.likes || 0;
+
             const bubble = document.createElement('div');
             bubble.className = 'bubble';
             bubble.id = 'bubble-' + key;
             bubble.style.backgroundColor = colors[colorIndex % colors.length];
 
             const textSpan = document.createElement('span');
+            textSpan.className = 'bubble-text';
             textSpan.innerText = val.text;
             bubble.appendChild(textSpan);
+
+            const likeBtn = document.createElement('button');
+            likeBtn.className = 'like-btn';
+            likeBtn.type = 'button';
+            likeBtn.title = 'Beğen';
+            updateLikeButtonUI(likeBtn, key, likesCount);
+            likeBtn.onclick = function() {
+                toggleLike(key);
+            };
+            bubble.appendChild(likeBtn);
 
             const delBtn = document.createElement('button');
             delBtn.className = 'delete-single-btn';
@@ -398,14 +510,39 @@
             };
             bubble.appendChild(delBtn);
 
-            container.appendChild(bubble);
+            sentencesMap.set(key, {
+                key: key,
+                likes: likesCount,
+                order: colorIndex,
+                element: bubble,
+                likeBtn: likeBtn
+            });
+
+            reorderBubbles();
         });
 
+        // Başka cihazlardan beğeni geldiğinde anlık sayıyı güncelle ve sırala
+        onChildChanged(ideasRef, (snapshot) => {
+            const val = snapshot.val();
+            const key = snapshot.key;
+            const item = sentencesMap.get(key);
+            if (!val || !item) return;
+
+            item.likes = val.likes || 0;
+            updateLikeButtonUI(item.likeBtn, key, item.likes);
+            reorderBubbles();
+        });
+
+        // Silinen cümleyi tüm cihazlardan kaldır
         onChildRemoved(ideasRef, (snapshot) => {
             const key = snapshot.key;
-            renderedKeys.delete(key);
-            const removedEl = document.getElementById('bubble-' + key);
-            if (removedEl) removedEl.remove();
+            const item = sentencesMap.get(key);
+            if (item && item.element) {
+                item.element.remove();
+            }
+            sentencesMap.delete(key);
+            likedKeys.delete(key);
+            saveLikedKeys();
         });
 
         function handleSend(e) {
@@ -428,7 +565,7 @@
             sendBtn.disabled = true;
             sendBtn.innerText = 'Gönderiliyor...';
 
-            push(ideasRef, { text: text, timestamp: now })
+            push(ideasRef, { text: text, likes: 0, timestamp: now })
                 .then(() => {
                     input.value = '';
                     document.getElementById('error-msg').innerText = '';
@@ -468,7 +605,6 @@
             const pass = document.getElementById('adminPassInput').value;
             if (pass === 'Baran123') {
                 document.body.classList.add('admin-mode');
-                // Girişte çarpılar gizli başlar
                 document.body.classList.remove('delete-active');
                 const toggleBtn = document.getElementById('toggleDeleteBtn');
                 toggleBtn.classList.remove('active');
@@ -480,6 +616,18 @@
             } else {
                 document.getElementById('admin-error').innerText = 'Hatalı şifre!';
             }
+        };
+
+        // Yöneticilikten Çıkış
+        window.logoutAdmin = function() {
+            document.body.classList.remove('admin-mode');
+            document.body.classList.remove('delete-active');
+            const toggleBtn = document.getElementById('toggleDeleteBtn');
+            toggleBtn.classList.remove('active');
+            toggleBtn.innerText = 'Cümle Seç / Sil';
+
+            document.getElementById('pool-view').style.display = 'none';
+            document.getElementById('entry-view').style.display = 'flex';
         };
 
         window.toggleDeleteMode = function() {
