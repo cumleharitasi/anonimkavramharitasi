@@ -39,7 +39,8 @@
             align-items: center;
         }
         #entry-view h1 {
-            font-size: 28px;
+            font-size: 26px;
+            line-height: 1.3;
             margin-bottom: 20px;
             text-shadow: 0 2px 6px rgba(0,0,0,0.12);
         }
@@ -89,6 +90,7 @@
         .spelling-note {
             color: #ffffff;
             font-size: 13.5px;
+            line-height: 1.4;
             margin-top: 12px;
             font-weight: 500;
             opacity: 0.95;
@@ -100,7 +102,7 @@
             font-weight: bold;
         }
 
-        /* Alt Kısımdaki Kırmızı Yönetici Girişi Butonu (Mobil Uyumlu) */
+        /* Alt Kısımdaki Kırmızı Yönetici Girişi Butonu */
         .admin-login-btn {
             margin-top: 16px;
             flex-shrink: 0;
@@ -286,10 +288,10 @@
     <!-- 1. EKRAN: CÜMLE GİRİŞ BÖLÜMÜ -->
     <div id="entry-view">
         <div class="entry-center">
-            <h1>Cümleni Yaz</h1>
+            <h1>Söz Sırası Sende, Cümleni Kur</h1>
             <textarea id="sentenceInput" placeholder="Buraya yazdıkların tamamen gizlidir, kimin yazdığı kesinlikle görünmez. İçinden geçen cümleyi rahatça yazabilirsin..." maxlength="140"></textarea>
             <button id="sendBtn" class="send-btn" type="button">Gönder</button>
-            <div class="spelling-note">Cümlelerinizi kurarken yazım ve imla kurallarına uyunuz.</div>
+            <div class="spelling-note">Cümleni kurarken büyük harf, noktalama işaretleri ve yazım kurallarına özen göster.</div>
             <div id="error-msg"></div>
         </div>
 
@@ -348,7 +350,6 @@
         let lastSentText = '';
         let lastSentTime = 0;
 
-        // Veritabanından gelen her yeni cümleyi paragraf akışı gibi soldan sağa ekle
         onChildAdded(ideasRef, (snapshot) => {
             const val = snapshot.val();
             const key = snapshot.key;
@@ -380,7 +381,6 @@
             container.appendChild(bubble);
         });
 
-        // Silinen cümleyi tüm cihazlardan kaldır
         onChildRemoved(ideasRef, (snapshot) => {
             const key = snapshot.key;
             renderedKeys.delete(key);
@@ -388,7 +388,6 @@
             if (removedEl) removedEl.remove();
         });
 
-        // Çift gönderim korumalı cümle gönderme fonksiyonu
         function handleSend(e) {
             if (e) e.preventDefault();
             if (isSubmitting) return;
