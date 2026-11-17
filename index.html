@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Canlı Kavram Haritası</title>
-    <!-- Kavram Haritası Kütüphanesi (Vis.js) -->
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background: #f4f7f6; }
@@ -15,20 +14,131 @@
         #topic-display { color: #46178f; font-weight: bold; margin-bottom: 20px; font-size: 18px; }
         input { width: 100%; max-width: 400px; padding: 15px; margin: 10px 0; font-size: 16px; border-radius: 10px; border: 2px solid #ddd; outline: none; box-sizing: border-box; }
         input:focus { border-color: #46178f; }
-        button.send-btn { width: 100%; max-width: 400px; padding: 15px; margin: 10px 0; font-size: 18px; border-radius: 10px; background: #46178f; color: white; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        button.send-btn:active { background: #33106b; transform: scale(0.98); }
-        #status { color: #2e7d32; font-weight: bold; height: 24px; margin-top: 10px; }
+        button.send-btn { width: 100%; max-width: 400px; padding: 15px; margin: 10px 0; font-size: 18px; border-radius: 10px; background: #46178f; color: white; border: none; font-weight: bold; cursor: pointer; }
+        button.send-btn:active { background: #33106b; }
+        #status { color: #2e7d32; font-weight: bold; min-height: 24px; margin-top: 10px; }
 
         /* TAHTA (KAVRAM HARİTASI) GÖRÜNÜMÜ */
         #board-view { display: none; width: 100vw; height: 100vh; position: relative; background: #ffffff; }
         #mynetwork { width: 100%; height: 100%; }
         
-        /* Tahta Üst Kontrol Paneli */
-        #board-controls { position: absolute; top: 15px; right: 15px; z-index: 10; display: flex; gap: 10px; background: rgba(255,255,255,0.9); padding: 10px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        #board-controls { position: absolute; top: 15px; right: 15px; z-index: 10; display: flex; gap: 10px; background: rgba(255,255,255,0.95); padding: 10px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
         #topic-input { padding: 8px 12px; font-size: 14px; border: 1px solid #ccc; border-radius: 6px; width: 200px; margin: 0; }
         .ctrl-btn { padding: 8px 14px; font-size: 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; }
         .btn-update { background: #1976d2; }
         .btn-clear { background: #d32f2f; }
 
-        /* QR Kod Kutusu */
-        #qr-box { position: absolute; bottom
+        #qr-box { position: absolute; bottom: 15px; left: 15px; z-index: 10; background: white; padding: 12px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); text-align: center; }
+        #qr-box img { width: 130px; height: 130px; display: block; margin: 0 auto 5px; }
+        #qr-box span { font-size: 12px; font-weight: bold; color: #333; }
+    </style>
+</head>
+<body>
+
+    <!-- KATILIMCI (TELEFON) EKRANI -->
+    <div id="student-view">
+        <h2>Kavram Haritasına Katıl</h2>
+        <div id="topic-display">Konu: ANA KONU</div>
+        <input type="text" id="sentenceInput" placeholder="Cümleni veya fikrini yaz..." maxlength="90" onkeypress="if(event.key==='Enter') sendSentence()">
+        <button class="send-btn" onclick="sendSentence()">Tahtaya Gönder</button>
+        <div id="status"></div>
+    </div>
+
+    <!-- TAHTA (KAVRAM HARİTASI) EKRANI -->
+    <div id="board-view">
+        <div id="board-controls">
+            <input type="text" id="topic-input" placeholder="Ana Konu Başlığı...">
+            <button class="ctrl-btn btn-update" onclick="updateTopic()">Başlığı Güncelle</button>
+            <button class="ctrl-btn btn-clear" onclick="clearBoard()">Tahtayı Temizle</button>
+        </div>
+
+        <div id="qr-box">
+            <img id="qr-img" src="" alt="QR Kod">
+            <span>Katılmak için okutun</span>
+        </div>
+
+        <div id="mynetwork"></div>
+    </div>
+
+    <!-- ÖNCE ARAYÜZÜ ANINDA AÇAN STANDART SCRIPT -->
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const isBoard = urlParams.get('tahta') === '1';
+
+        if (isBoard) {
+            document.getElementById('student-view').style.display = 'none';
+            document.getElementById('board-view').style.display = 'block';
+            const studentUrl = window.location.href.split('?')[0];
+            document.getElementById('qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(studentUrl)}`;
+        }
+    </script>
+
+    <!-- SONRA FIREBASE BAĞLANTISINI KURAN SCRIPT -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, push, onChildAdded, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCKyoNQaWgh61lLY24ard-Q5WCS3CdIn6k",
+            authDomain: "cumleharitasi.firebaseapp.com",
+            databaseURL: "https://cumleharitasi-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "cumleharitasi",
+            storageBucket: "cumleharitasi.firebasestorage.app",
+            messagingSenderId: "381651848442",
+            appId: "1:381651848442:web:1fe29e5e40548aa4f6cd43"
+        };
+
+        try {
+            const app = initializeApp(firebaseConfig);
+            const db = getDatabase(app);
+            const ideasRef = ref(db, 'cumleler');
+            const topicRef = ref(db, 'anaKonu');
+
+            if (isBoard) {
+                initBoard(ideasRef, topicRef);
+            } else {
+                onValue(topicRef, (snapshot) => {
+                    const topic = snapshot.val() || "ANA KONU";
+                    document.getElementById('topic-display').innerText = "Konu: " + topic;
+                });
+            }
+
+            window.sendSentence = function() {
+                const input = document.getElementById('sentenceInput');
+                const text = input.value.trim();
+                if (!text) return;
+
+                push(ideasRef, { text: text, timestamp: Date.now() })
+                    .then(() => {
+                        input.value = '';
+                        document.getElementById('status').style.color = '#2e7d32';
+                        document.getElementById('status').innerText = '✓ Tahtaya gönderildi!';
+                        setTimeout(() => document.getElementById('status').innerText = '', 2000);
+                    })
+                    .catch((err) => {
+                        document.getElementById('status').style.color = 'red';
+                        document.getElementById('status').innerText = 'Hata: ' + err.message;
+                    });
+            };
+
+            window.updateTopic = function() {
+                const newTopic = document.getElementById('topic-input').value.trim();
+                if (newTopic) {
+                    set(topicRef, newTopic);
+                    document.getElementById('topic-input').value = '';
+                }
+            };
+
+            window.clearBoard = function() {
+                if (confirm("Tahtadaki tüm cümleler silinecek. Emin misin?")) {
+                    remove(ideasRef).then(() => location.reload());
+                }
+            };
+
+        } catch (error) {
+            alert("Firebase Bağlantı Hatası: " + error.message);
+        }
+
+        function initBoard(ideasRef, topicRef) {
+            if (typeof vis === 'undefined') {
+                alert("Harita kütüphanesi yüklenemed
