@@ -45,6 +45,40 @@
             text-shadow: 0 2px 6px rgba(0,0,0,0.12);
         }
 
+        /* Etkinlik Bittiğinde Giriş Ekranı Uyarı Kartı */
+        #entry-closed-banner {
+            display: none;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.96);
+            color: #0d47a1;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(13, 71, 161, 0.22);
+            margin-bottom: 14px;
+        }
+        #entry-closed-banner h2 {
+            font-size: 19px;
+            margin-bottom: 8px;
+            color: #b71c1c;
+        }
+        #entry-closed-banner p {
+            font-size: 14.5px;
+            color: #37474f;
+            line-height: 1.45;
+            margin-bottom: 14px;
+        }
+        .btn-view-results {
+            width: 100%;
+            padding: 14px;
+            font-size: 16px;
+            border-radius: 12px;
+            background: #0d47a1;
+            color: white;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
         /* Metin Kutusu ve Alt Biçimlendirme Araç Çubuğu Kapsayıcısı */
         .editor-box {
             width: 100%;
@@ -209,6 +243,7 @@
             display: flex;
             flex-wrap: wrap;
             justify-content: flex-end;
+            align-items: center;
             gap: 8px;
         }
         .btn-add {
@@ -221,6 +256,21 @@
             font-weight: bold;
             cursor: pointer;
             box-shadow: 0 4px 12px rgba(13, 71, 161, 0.3);
+        }
+        .btn-end-activity {
+            display: none;
+            background: #6a1b9a;
+            color: white;
+            border: none;
+            padding: 9px 14px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        }
+        .btn-end-activity.is-ended {
+            background: #2e7d32;
         }
         .btn-toggle-delete {
             display: none;
@@ -260,6 +310,31 @@
             font-weight: bold;
             cursor: pointer;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        }
+
+        /* Havuz Ekranında Etkinlik Bitti Bildirim Şeridi */
+        #pool-ended-banner {
+            display: none;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            color: #b71c1c;
+            border: 2px solid #ffcdd2;
+            padding: 11px 16px;
+            border-radius: 14px;
+            font-size: 14px;
+            font-weight: 800;
+            text-align: center;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
+        }
+        body.activity-ended #pool-ended-banner {
+            display: block;
+        }
+        body.activity-ended .own-delete-btn {
+            display: none !important;
+        }
+        body.activity-ended .like-btn {
+            cursor: default;
+            opacity: 0.78;
         }
 
         /* Uyarı Bildirimi (Toast) */
@@ -376,25 +451,39 @@
             display: inline-flex;
             align-items: center;
             gap: 5px;
-            background: rgba(255, 255, 255, 0.82);
-            border: 1px solid rgba(13, 71, 161, 0.2);
+            background: rgba(255, 255, 255, 0.85);
+            border: 1.5px solid rgba(13, 71, 161, 0.2);
             border-radius: 14px;
             padding: 4px 10px;
             font-size: 13.5px;
             font-weight: bold;
             color: #37474f;
             cursor: pointer;
-            transition: transform 0.12s, background 0.2s, color 0.2s, border-color 0.2s;
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            transition: transform 0.12s, background-color 0.15s, color 0.15s, border-color 0.15s;
             flex-shrink: 0;
             margin-left: auto;
+        }
+        .like-btn:not(.liked),
+        .like-btn:not(.liked):focus,
+        .like-btn:not(.liked):hover {
+            background: rgba(255, 255, 255, 0.85);
+            border-color: rgba(13, 71, 161, 0.2);
+            color: #37474f;
+            box-shadow: none;
         }
         .like-btn:active {
             transform: scale(0.9);
         }
-        .like-btn.liked {
-            background: #e3f2fd;
-            border-color: #1976d2;
+        .like-btn.liked,
+        .like-btn.liked:focus,
+        .like-btn.liked:hover {
+            background: #bbdefb;
+            border-color: #1565c0;
             color: #0d47a1;
+            box-shadow: 0 2px 6px rgba(21, 101, 192, 0.25);
         }
         .like-btn.own-sentence {
             opacity: 0.55;
@@ -424,6 +513,7 @@
         body.admin-mode.delete-active .delete-single-btn {
             display: block;
         }
+        body.admin-mode .btn-end-activity,
         body.admin-mode .btn-toggle-delete,
         body.admin-mode .btn-clear-all,
         body.admin-mode .btn-admin-logout {
@@ -502,20 +592,30 @@
     <div id="entry-view">
         <div class="entry-center">
             <h1>Söz Sırası Sende, Cümleni Kur</h1>
-            <div class="editor-box">
-                <div id="sentenceEditor" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Buraya yazdıkların tamamen gizlidir, kimin yazdığı kesinlikle görünmez. İçinden geçen cümleyi rahatça yazabilirsin..."></div>
-                <div class="editor-toolbar">
-                    <div class="format-group">
-                        <button type="button" id="boldBtn" class="fmt-btn fmt-bold" title="Kalın Yaz" onmousedown="event.preventDefault(); applyFormat('bold')">K</button>
-                        <button type="button" id="italicBtn" class="fmt-btn fmt-italic" title="İtalik Yaz" onmousedown="event.preventDefault(); applyFormat('italic')">İ</button>
-                        <button type="button" id="underlineBtn" class="fmt-btn fmt-underline" title="Altı Çizili Yaz" onmousedown="event.preventDefault(); applyFormat('underline')">A</button>
+
+            <!-- Etkinlik Bittiğinde Görünen Kilit Kartı -->
+            <div id="entry-closed-banner">
+                <h2>Etkinlik Sona Erdi</h2>
+                <p>Öğretmen etkinliği sonlandırdı. Yeni cümle ekleme, silme ve oy verme işlemleri kapatıldı.</p>
+                <button type="button" class="btn-view-results" onclick="goToPoolResults()">Cümle Havuzunu İncele</button>
+            </div>
+
+            <div id="entry-form-area" style="width: 100%;">
+                <div class="editor-box">
+                    <div id="sentenceEditor" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Buraya yazdıkların tamamen gizlidir, kimin yazdığı kesinlikle görünmez. İçinden geçen cümleyi rahatça yazabilirsin..."></div>
+                    <div class="editor-toolbar">
+                        <div class="format-group">
+                            <button type="button" id="boldBtn" class="fmt-btn fmt-bold" title="Kalın Yaz" onmousedown="event.preventDefault(); applyFormat('bold')">K</button>
+                            <button type="button" id="italicBtn" class="fmt-btn fmt-italic" title="İtalik Yaz" onmousedown="event.preventDefault(); applyFormat('italic')">İ</button>
+                            <button type="button" id="underlineBtn" class="fmt-btn fmt-underline" title="Altı Çizili Yaz" onmousedown="event.preventDefault(); applyFormat('underline')">A</button>
+                        </div>
                     </div>
                 </div>
+                <button id="sendBtn" class="send-btn" type="button">Gönder</button>
+                <button id="goPoolBtn" class="btn-go-pool" type="button" onclick="goToPool()">Cümle Havuzuna Git</button>
+                <div class="spelling-note">Cümleni kurarken büyük harf, noktalama işaretleri ve yazım kurallarına özen göster.</div>
+                <div id="error-msg"></div>
             </div>
-            <button id="sendBtn" class="send-btn" type="button">Gönder</button>
-            <button id="goPoolBtn" class="btn-go-pool" type="button" onclick="goToPool()">Cümle Havuzuna Git</button>
-            <div class="spelling-note">Cümleni kurarken büyük harf, noktalama işaretleri ve yazım kurallarına özen göster.</div>
-            <div id="error-msg"></div>
         </div>
 
         <button class="admin-login-btn" type="button" onclick="openAdminModal()">Yönetici Girişi</button>
@@ -524,12 +624,15 @@
     <!-- 2. EKRAN: PARAGRAF DÜZENİNDE CÜMLE HAVUZU -->
     <div id="pool-view">
         <div class="top-actions">
+            <button id="endActivityBtn" class="btn-end-activity" type="button" onclick="toggleActivityEnded()">Etkinliği Bitir</button>
             <button id="toggleDeleteBtn" class="btn-toggle-delete" type="button" onclick="toggleDeleteMode()">Cümle Seç / Sil</button>
             <button class="btn-clear-all" type="button" onclick="clearAllSentences()">Tümünü Temizle</button>
             <button class="btn-admin-logout" type="button" onclick="logoutAdmin()">Yönetici Çıkışı</button>
             <button id="addSentenceTopBtn" class="btn-add" type="button" onclick="openEntry()">+ Cümle Yaz</button>
         </div>
-        <div id="bubbles-container"></div>
+        <div id="bubbles-container">
+            <div id="pool-ended-banner">🔒 Etkinlik sona erdi. Cümle ekleme, silme ve oy verme işlemleri durduruldu.</div>
+        </div>
         <div id="toast-msg"></div>
     </div>
 
@@ -548,7 +651,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, push, set, onChildAdded, onChildChanged, onChildRemoved, remove, runTransaction } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getDatabase, ref, push, set, onValue, onChildAdded, onChildChanged, onChildRemoved, remove, runTransaction } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCKyoNQaWgh61lLY24ard-Q5WCS3CdIn6k",
@@ -563,6 +666,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
         const ideasRef = ref(db, 'cumleler');
+        const statusRef = ref(db, 'etkinlik_durumu/bitti');
 
         const colors = [
             '#ffffff', '#e3f2fd', '#c8e6c9', 
@@ -571,10 +675,9 @@
         ];
 
         const sentencesMap = new Map();
-        // Kullanıcının havuzdaki tek cümlesinin anahtarı
         let ownSentenceKey = localStorage.getItem('ownSentenceKey') || null;
-        // Kullanıcının beğendiği tek cümlenin anahtarı
         let votedKey = localStorage.getItem('votedSentenceKey') || null;
+        let isActivityEnded = false;
 
         let colorIndex = 0;
         let isSubmitting = false;
@@ -612,12 +715,38 @@
             }
         }
 
-        // Sadece havuzda aktif kendi cümlesi olanlarda "Cümle Havuzuna Git" görünür;
-        // cümle yazmayanlarda veya cümlesini silenlerde tamamen gizlenir.
+        // Etkinlik durumunu (aktif / bitmiş) tüm cihazlarda anlık dinle
+        onValue(statusRef, (snapshot) => {
+            isActivityEnded = Boolean(snapshot.val());
+            document.body.classList.toggle('activity-ended', isActivityEnded);
+
+            const endBtn = document.getElementById('endActivityBtn');
+            if (isActivityEnded) {
+                endBtn.classList.add('is-ended');
+                endBtn.innerText = 'Etkinliği Başlat';
+            } else {
+                endBtn.classList.remove('is-ended');
+                endBtn.innerText = 'Etkinliği Bitir';
+            }
+
+            // Giriş ekranı kilidini güncelle
+            document.getElementById('entry-closed-banner').style.display = isActivityEnded ? 'block' : 'none';
+            document.getElementById('entry-form-area').style.display = isActivityEnded ? 'none' : 'block';
+
+            updateWritePermissionUI();
+            refreshAllLikeButtons();
+        });
+
         function updateWritePermissionUI() {
             const hasActiveOwn = Boolean(ownSentenceKey && sentencesMap.has(ownSentenceKey));
             const addTopBtn = document.getElementById('addSentenceTopBtn');
             const goPoolBtn = document.getElementById('goPoolBtn');
+
+            if (isActivityEnded) {
+                addTopBtn.style.display = 'none';
+                goPoolBtn.style.display = 'none';
+                return;
+            }
 
             addTopBtn.style.display = hasActiveOwn ? 'none' : 'block';
             goPoolBtn.style.display = hasActiveOwn ? 'block' : 'none';
@@ -667,6 +796,7 @@
         }
 
         window.applyFormat = function(command) {
+            if (isActivityEnded) return;
             editor.focus();
             document.execCommand(command, false, null);
             updateToolbarState();
@@ -674,6 +804,7 @@
 
         editor.addEventListener('paste', (e) => {
             e.preventDefault();
+            if (isActivityEnded) return;
             const text = (e.clipboardData || window.clipboardData).getData('text/plain');
             document.execCommand('insertText', false, text);
         });
@@ -708,13 +839,35 @@
         function updateLikeButtonUI(btn, key, count) {
             const isOwn = ownSentenceKey === key;
             const isLiked = votedKey === key;
-            btn.classList.toggle('liked', isLiked);
+
+            if (isLiked) {
+                btn.classList.add('liked');
+            } else {
+                btn.classList.remove('liked');
+                btn.blur();
+            }
+
             btn.classList.toggle('own-sentence', isOwn);
-            btn.title = isOwn ? 'Kendi cümleni beğenemezsin' : (isLiked ? 'Beğeniyi geri al' : 'Beğen');
+            if (isActivityEnded) {
+                btn.title = 'Etkinlik sona erdi';
+            } else {
+                btn.title = isOwn ? 'Kendi cümleni beğenemezsin' : (isLiked ? 'Beğeniyi geri al' : 'Beğen');
+            }
             btn.innerHTML = `👍️ <span>${count}</span>`;
         }
 
+        function refreshAllLikeButtons() {
+            for (const [k, item] of sentencesMap.entries()) {
+                updateLikeButtonUI(item.likeBtn, k, item.likes);
+            }
+        }
+
         function toggleLike(key) {
+            if (isActivityEnded) {
+                showToast('Etkinlik sona erdiği için oy verme işlemi kapatıldı.');
+                return;
+            }
+
             if (ownSentenceKey === key) {
                 showToast('Kendi cümleni beğenemezsin!');
                 return;
@@ -727,9 +880,9 @@
                 const item = sentencesMap.get(key);
                 if (item) {
                     item.likes = Math.max(0, item.likes - 1);
-                    updateLikeButtonUI(item.likeBtn, key, item.likes);
-                    reorderBubbles();
                 }
+                refreshAllLikeButtons();
+                reorderBubbles();
 
                 runTransaction(ref(db, 'cumleler/' + key + '/likes'), (currentLikes) => {
                     return Math.max(0, (currentLikes || 0) - 1);
@@ -744,7 +897,6 @@
             if (previousKey && sentencesMap.has(previousKey)) {
                 const prevItem = sentencesMap.get(previousKey);
                 prevItem.likes = Math.max(0, prevItem.likes - 1);
-                updateLikeButtonUI(prevItem.likeBtn, previousKey, prevItem.likes);
 
                 runTransaction(ref(db, 'cumleler/' + previousKey + '/likes'), (currentLikes) => {
                     return Math.max(0, (currentLikes || 0) - 1);
@@ -754,9 +906,10 @@
             const newItem = sentencesMap.get(key);
             if (newItem) {
                 newItem.likes = newItem.likes + 1;
-                updateLikeButtonUI(newItem.likeBtn, key, newItem.likes);
-                reorderBubbles();
             }
+
+            refreshAllLikeButtons();
+            reorderBubbles();
 
             runTransaction(ref(db, 'cumleler/' + key + '/likes'), (currentLikes) => {
                 return (currentLikes || 0) + 1;
@@ -798,6 +951,10 @@
             ownDelBtn.innerText = 'Cümlemi Sil';
             ownDelBtn.style.display = isOwn ? 'inline-flex' : 'none';
             ownDelBtn.onclick = function() {
+                if (isActivityEnded) {
+                    showToast('Etkinlik sona erdiği için cümle silinemez.');
+                    return;
+                }
                 if (confirm('Kendi cümleni silip yeni bir cümle yazmak istiyor musun?')) {
                     remove(ref(db, 'cumleler/' + key)).then(() => {
                         showToast('Cümlen silindi. Şimdi yeni cümle yazabilirsin.');
@@ -866,6 +1023,7 @@
                 votedKey = null;
                 saveVotedKey();
             }
+            refreshAllLikeButtons();
             updateWritePermissionUI();
             reorderBubbles();
         });
@@ -873,6 +1031,11 @@
         function handleSend(e) {
             if (e) e.preventDefault();
             if (isSubmitting) return;
+
+            if (isActivityEnded) {
+                document.getElementById('error-msg').innerText = 'Etkinlik sona erdiği için yeni cümle gönderilemez.';
+                return;
+            }
 
             if (ownSentenceKey && sentencesMap.has(ownSentenceKey)) {
                 document.getElementById('error-msg').innerText = 'Zaten havuzda bir cümlen var. Yeni yazmak için önce havuzdan kendi cümleni silmelisin.';
@@ -922,6 +1085,10 @@
         document.getElementById('sendBtn').addEventListener('click', handleSend);
 
         window.openEntry = function() {
+            if (isActivityEnded) {
+                showToast('Etkinlik sona erdi, yeni cümle yazılamaz.');
+                return;
+            }
             if (ownSentenceKey && sentencesMap.has(ownSentenceKey)) {
                 showToast('Zaten bir cümlen var. Değiştirmek için "Cümlemi Sil" butonuna bas.');
                 return;
@@ -940,6 +1107,25 @@
             }
             document.getElementById('entry-view').style.display = 'none';
             document.getElementById('pool-view').style.display = 'block';
+        };
+
+        window.goToPoolResults = function() {
+            document.getElementById('entry-view').style.display = 'none';
+            document.getElementById('pool-view').style.display = 'block';
+        };
+
+        // Yönetici: Etkinliği Bitir / Yeniden Başlat
+        window.toggleActivityEnded = function() {
+            const nextState = !isActivityEnded;
+            const confirmMsg = nextState
+                ? 'Etkinlik bitirilecek. Öğrencilerin cümle yazma, silme ve oy verme işlemleri durdurulacak. Onaylıyor musunuz?'
+                : 'Etkinlik yeniden başlatılacak ve öğrencilere açılacak. Onaylıyor musunuz?';
+
+            if (confirm(confirmMsg)) {
+                set(statusRef, nextState).then(() => {
+                    showToast(nextState ? 'Etkinlik bitirildi ve tüm işlemler durduruldu.' : 'Etkinlik yeniden başlatıldı.');
+                });
+            }
         };
 
         window.openAdminModal = function() {
