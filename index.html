@@ -412,7 +412,6 @@
             '#f8bbd0', '#e1bee7', '#dcedc8'
         ];
 
-        // Cümle verilerini ve sıralamayı hafızada tutma
         const sentencesMap = new Map();
         const likedKeys = new Set(JSON.parse(localStorage.getItem('likedSentences') || '[]'));
         let colorIndex = 0;
@@ -424,14 +423,13 @@
             localStorage.setItem('likedSentences', JSON.stringify([...likedKeys]));
         }
 
-        // En çok beğeni alandan en aza doğru baloncukları yeniden sırala
         function reorderBubbles() {
             const container = document.getElementById('bubbles-container');
             const sortedItems = [...sentencesMap.values()].sort((a, b) => {
                 if (b.likes !== a.likes) {
-                    return b.likes - a.likes; // Çok beğeni alan en başa
+                    return b.likes - a.likes;
                 }
-                return a.order - b.order; // Beğeniler eşitse ilk yazılan önde
+                return a.order - b.order;
             });
 
             for (const item of sortedItems) {
@@ -439,7 +437,6 @@
             }
         }
 
-        // Beğeni ekleme / geri alma işlemi
         function toggleLike(key) {
             const isCurrentlyLiked = likedKeys.has(key);
             const delta = isCurrentlyLiked ? -1 : 1;
@@ -471,7 +468,6 @@
             btn.innerHTML = `${isLiked ? '❤️' : '🤍'} <span>${count}</span>`;
         }
 
-        // Yeni cümle eklendiğinde oluştur ve sırala
         onChildAdded(ideasRef, (snapshot) => {
             const val = snapshot.val();
             const key = snapshot.key;
@@ -521,7 +517,6 @@
             reorderBubbles();
         });
 
-        // Başka cihazlardan beğeni geldiğinde anlık sayıyı güncelle ve sırala
         onChildChanged(ideasRef, (snapshot) => {
             const val = snapshot.val();
             const key = snapshot.key;
@@ -533,7 +528,6 @@
             reorderBubbles();
         });
 
-        // Silinen cümleyi tüm cihazlardan kaldır
         onChildRemoved(ideasRef, (snapshot) => {
             const key = snapshot.key;
             const item = sentencesMap.get(key);
@@ -585,7 +579,9 @@
 
         document.getElementById('sendBtn').addEventListener('click', handleSend);
 
+        // "+ Cümle Yaz" butonuna basıldığında yönetici oturumunu da otomatik sonlandırır
         window.openEntry = function() {
+            resetAdminState();
             document.getElementById('pool-view').style.display = 'none';
             document.getElementById('entry-view').style.display = 'flex';
         };
@@ -618,14 +614,16 @@
             }
         };
 
-        // Yöneticilikten Çıkış
-        window.logoutAdmin = function() {
+        function resetAdminState() {
             document.body.classList.remove('admin-mode');
             document.body.classList.remove('delete-active');
             const toggleBtn = document.getElementById('toggleDeleteBtn');
             toggleBtn.classList.remove('active');
             toggleBtn.innerText = 'Cümle Seç / Sil';
+        }
 
+        window.logoutAdmin = function() {
+            resetAdminState();
             document.getElementById('pool-view').style.display = 'none';
             document.getElementById('entry-view').style.display = 'flex';
         };
