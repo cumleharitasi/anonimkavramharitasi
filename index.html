@@ -139,6 +139,24 @@
             cursor: not-allowed;
             transform: none;
         }
+        .btn-go-pool {
+            display: none;
+            width: 100%;
+            padding: 13px;
+            margin-top: 10px;
+            font-size: 15px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.22);
+            color: white;
+            border: 1.5px solid rgba(255, 255, 255, 0.75);
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .btn-go-pool:active {
+            transform: scale(0.98);
+            background: rgba(255, 255, 255, 0.32);
+        }
         .spelling-note {
             color: #ffffff;
             font-size: 13.5px;
@@ -495,6 +513,7 @@
                 </div>
             </div>
             <button id="sendBtn" class="send-btn" type="button">Gönder</button>
+            <button id="goPoolBtn" class="btn-go-pool" type="button" onclick="goToPool()">Cümle Havuzuna Git</button>
             <div class="spelling-note">Cümleni kurarken büyük harf, noktalama işaretleri ve yazım kurallarına özen göster.</div>
             <div id="error-msg"></div>
         </div>
@@ -593,11 +612,15 @@
             }
         }
 
-        // Kullanıcının havuzda aktif cümlesi varsa "+ Cümle Yaz" butonunu gizle
+        // Sadece havuzda aktif kendi cümlesi olanlarda "Cümle Havuzuna Git" görünür;
+        // cümle yazmayanlarda veya cümlesini silenlerde tamamen gizlenir.
         function updateWritePermissionUI() {
-            const hasActiveOwn = ownSentenceKey && sentencesMap.has(ownSentenceKey);
+            const hasActiveOwn = Boolean(ownSentenceKey && sentencesMap.has(ownSentenceKey));
             const addTopBtn = document.getElementById('addSentenceTopBtn');
+            const goPoolBtn = document.getElementById('goPoolBtn');
+
             addTopBtn.style.display = hasActiveOwn ? 'none' : 'block';
+            goPoolBtn.style.display = hasActiveOwn ? 'block' : 'none';
         }
 
         function sanitizeFormattedHTML(rawHtml) {
@@ -697,7 +720,6 @@
                 return;
             }
 
-            // Zaten bu cümleyi beğenmişse beğeniyi geri al
             if (votedKey === key) {
                 votedKey = null;
                 saveVotedKey();
@@ -715,7 +737,6 @@
                 return;
             }
 
-            // Önce votedKey'i yeni cümleye ata ki eski cümlenin maviliği de kesin olarak kalksın
             const previousKey = votedKey;
             votedKey = key;
             saveVotedKey();
@@ -771,7 +792,6 @@
             textSpan.innerHTML = sanitizeFormattedHTML(val.text);
             bubble.appendChild(textSpan);
 
-            // Sadece cümlenin kendi yazarına görünen silme butonu
             const ownDelBtn = document.createElement('button');
             ownDelBtn.className = 'own-delete-btn';
             ownDelBtn.type = 'button';
@@ -795,7 +815,6 @@
             };
             bubble.appendChild(likeBtn);
 
-            // Yönetici için tekli silme ikonu
             const adminDelBtn = document.createElement('button');
             adminDelBtn.className = 'delete-single-btn';
             adminDelBtn.type = 'button';
@@ -857,6 +876,7 @@
 
             if (ownSentenceKey && sentencesMap.has(ownSentenceKey)) {
                 document.getElementById('error-msg').innerText = 'Zaten havuzda bir cümlen var. Yeni yazmak için önce havuzdan kendi cümleni silmelisin.';
+                updateWritePermissionUI();
                 return;
             }
 
@@ -908,8 +928,18 @@
             }
             resetAdminState();
             document.getElementById('error-msg').innerText = '';
+            updateWritePermissionUI();
             document.getElementById('pool-view').style.display = 'none';
             document.getElementById('entry-view').style.display = 'flex';
+        };
+
+        window.goToPool = function() {
+            if (!(ownSentenceKey && sentencesMap.has(ownSentenceKey))) {
+                updateWritePermissionUI();
+                return;
+            }
+            document.getElementById('entry-view').style.display = 'none';
+            document.getElementById('pool-view').style.display = 'block';
         };
 
         window.openAdminModal = function() {
@@ -950,6 +980,7 @@
 
         window.logoutAdmin = function() {
             resetAdminState();
+            updateWritePermissionUI();
             document.getElementById('pool-view').style.display = 'none';
             document.getElementById('entry-view').style.display = 'flex';
         };
