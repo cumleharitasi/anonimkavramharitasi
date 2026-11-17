@@ -248,14 +248,14 @@
         #bubbles-container {
             width: 100%;
             height: 100%;
-            padding: 78px 24px 32px 24px;
+            padding: 82px 24px 32px 24px;
             overflow-y: auto;
             display: flex;
             flex-wrap: wrap;
             align-content: flex-start;
             justify-content: flex-start;
             align-items: flex-start;
-            gap: 14px;
+            gap: 16px;
         }
         .bubble {
             position: relative;
@@ -276,6 +276,23 @@
             animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             cursor: default;
         }
+        .bubble.top-sentence {
+            border: 2.5px solid #ffd54f;
+            box-shadow: 0 8px 22px rgba(255, 193, 7, 0.35);
+        }
+        .crown-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: linear-gradient(135deg, #ffd54f 0%, #ffb300 100%);
+            color: #3e2723;
+            font-size: 12px;
+            font-weight: 800;
+            padding: 3px 10px;
+            border-radius: 12px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+            flex-shrink: 0;
+        }
         .bubble-text {
             flex: 1 1 auto;
         }
@@ -290,20 +307,20 @@
             text-underline-offset: 2px;
         }
 
-        /* Beğeni Butonu */
+        /* Beğeni Butonu (👍️) */
         .like-btn {
             display: inline-flex;
             align-items: center;
-            gap: 4px;
-            background: rgba(255, 255, 255, 0.78);
-            border: 1px solid rgba(13, 71, 161, 0.18);
+            gap: 5px;
+            background: rgba(255, 255, 255, 0.82);
+            border: 1px solid rgba(13, 71, 161, 0.2);
             border-radius: 14px;
             padding: 4px 10px;
-            font-size: 13px;
+            font-size: 13.5px;
             font-weight: bold;
             color: #37474f;
             cursor: pointer;
-            transition: transform 0.12s, background 0.2s, color 0.2s;
+            transition: transform 0.12s, background 0.2s, color 0.2s, border-color 0.2s;
             flex-shrink: 0;
             margin-left: auto;
         }
@@ -311,9 +328,9 @@
             transform: scale(0.9);
         }
         .like-btn.liked {
-            background: #ffebee;
-            border-color: #ef9a9a;
-            color: #c62828;
+            background: #e3f2fd;
+            border-color: #1976d2;
+            color: #0d47a1;
         }
 
         /* Tekli Cümle Silme İkonu */
@@ -495,7 +512,6 @@
         const italicBtn = document.getElementById('italicBtn');
         const underlineBtn = document.getElementById('underlineBtn');
 
-        // Sadece kalın (b, strong), italik (i, em) ve altı çizili (u) etiketlerine izin veren güvenli temizleyici
         function sanitizeFormattedHTML(rawHtml) {
             const temp = document.createElement('div');
             temp.innerHTML = rawHtml;
@@ -545,7 +561,6 @@
             updateToolbarState();
         };
 
-        // Yapıştırma sırasında dış stilleri (renk, font boyutu vb.) temizle
         editor.addEventListener('paste', (e) => {
             e.preventDefault();
             const text = (e.clipboardData || window.clipboardData).getData('text/plain');
@@ -566,6 +581,7 @@
             localStorage.setItem('likedSentences', JSON.stringify([...likedKeys]));
         }
 
+        // En çok beğeni alandan en aza sırala ve en yüksek beğeni alan cümlenin başına "👑 Dersin Cümlesi" ekle
         function reorderBubbles() {
             const container = document.getElementById('bubbles-container');
             const sortedItems = [...sentencesMap.values()].sort((a, b) => {
@@ -575,9 +591,12 @@
                 return a.order - b.order;
             });
 
-            for (const item of sortedItems) {
+            sortedItems.forEach((item, index) => {
+                const isWinner = index === 0 && item.likes > 0;
+                item.element.classList.toggle('top-sentence', isWinner);
+                item.crownBadge.style.display = isWinner ? 'inline-flex' : 'none';
                 container.appendChild(item.element);
-            }
+            });
         }
 
         function toggleLike(key) {
@@ -608,7 +627,7 @@
         function updateLikeButtonUI(btn, key, count) {
             const isLiked = likedKeys.has(key);
             btn.classList.toggle('liked', isLiked);
-            btn.innerHTML = `${isLiked ? '❤️' : '🤍'} <span>${count}</span>`;
+            btn.innerHTML = `👍️ <span>${count}</span>`;
         }
 
         onChildAdded(ideasRef, (snapshot) => {
@@ -623,6 +642,12 @@
             bubble.className = 'bubble';
             bubble.id = 'bubble-' + key;
             bubble.style.backgroundColor = colors[colorIndex % colors.length];
+
+            const crownBadge = document.createElement('span');
+            crownBadge.className = 'crown-badge';
+            crownBadge.style.display = 'none';
+            crownBadge.innerText = '👑 Dersin Cümlesi';
+            bubble.appendChild(crownBadge);
 
             const textSpan = document.createElement('span');
             textSpan.className = 'bubble-text';
@@ -654,7 +679,8 @@
                 likes: likesCount,
                 order: colorIndex,
                 element: bubble,
-                likeBtn: likeBtn
+                likeBtn: likeBtn,
+                crownBadge: crownBadge
             });
 
             reorderBubbles();
@@ -680,6 +706,7 @@
             sentencesMap.delete(key);
             likedKeys.delete(key);
             saveLikedKeys();
+            reorderBubbles();
         });
 
         function handleSend(e) {
