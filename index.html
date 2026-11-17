@@ -244,6 +244,30 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
         }
 
+        /* Uyarı Bildirimi (Toast) */
+        #toast-msg {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: rgba(13, 71, 161, 0.95);
+            color: #ffffff;
+            padding: 10px 18px;
+            border-radius: 12px;
+            font-size: 13.5px;
+            font-weight: 600;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s, transform 0.25s;
+            z-index: 150;
+            white-space: nowrap;
+        }
+        #toast-msg.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
         /* Soldan Sağa ve Satır Doldukça Alt Alta Akan Havuz Alanı */
         #bubbles-container {
             width: 100%;
@@ -277,20 +301,21 @@
             cursor: default;
         }
         .bubble.top-sentence {
-            border: 2.5px solid #ffd54f;
-            box-shadow: 0 8px 22px rgba(255, 193, 7, 0.35);
+            border: 2.5px solid #ffffff;
+            box-shadow: 0 8px 22px rgba(13, 71, 161, 0.28);
         }
         .crown-badge {
             display: inline-flex;
             align-items: center;
-            gap: 4px;
-            background: linear-gradient(135deg, #ffd54f 0%, #ffb300 100%);
-            color: #3e2723;
+            gap: 5px;
+            background: #ffffff;
+            border: 2px solid #ffffff;
+            color: #0d47a1;
             font-size: 12px;
             font-weight: 800;
             padding: 3px 10px;
             border-radius: 12px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 2px 8px rgba(13, 71, 161, 0.18);
             flex-shrink: 0;
         }
         .bubble-text {
@@ -331,6 +356,10 @@
             background: #e3f2fd;
             border-color: #1976d2;
             color: #0d47a1;
+        }
+        .like-btn.own-sentence {
+            opacity: 0.55;
+            cursor: not-allowed;
         }
 
         /* Tekli Cümle Silme İkonu */
@@ -461,6 +490,7 @@
             <button class="btn-add" type="button" onclick="openEntry()">+ Cümle Yaz</button>
         </div>
         <div id="bubbles-container"></div>
+        <div id="toast-msg"></div>
     </div>
 
     <!-- YÖNETİCİ ŞİFRE PENCERESİ -->
@@ -501,16 +531,43 @@
         ];
 
         const sentencesMap = new Map();
-        const likedKeys = new Set(JSON.parse(localStorage.getItem('likedSentences') || '[]'));
+        // Kullanıcının kendi yazdığı cümlelerin anahtarları
+        const ownKeys = new Set(JSON.parse(localStorage.getItem('ownSentences') || '[]'));
+        // Kullanıcının seçtiği tek cümle anahtarı (en fazla 1 adet)
+        let votedKey = localStorage.getItem('votedSentenceKey') || null;
+
         let colorIndex = 0;
         let isSubmitting = false;
         let lastSentText = '';
         let lastSentTime = 0;
+        let toastTimer = null;
 
         const editor = document.getElementById('sentenceEditor');
         const boldBtn = document.getElementById('boldBtn');
         const italicBtn = document.getElementById('italicBtn');
         const underlineBtn = document.getElementById('underlineBtn');
+
+        function showToast(message) {
+            const toast = document.getElementById('toast-msg');
+            toast.innerText = message;
+            toast.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2400);
+        }
+
+        function saveOwnKeys() {
+            localStorage.setItem('ownSentences', JSON.stringify([...ownKeys]));
+        }
+
+        function saveVotedKey() {
+            if (votedKey) {
+                localStorage.setItem('votedSentenceKey', votedKey);
+            } else {
+                localStorage.removeItem('votedSentenceKey');
+            }
+        }
 
         function sanitizeFormattedHTML(rawHtml) {
             const temp = document.createElement('div');
@@ -577,11 +634,7 @@
         editor.addEventListener('keyup', updateToolbarState);
         editor.addEventListener('mouseup', updateToolbarState);
 
-        function saveLikedKeys() {
-            localStorage.setItem('likedSentences', JSON.stringify([...likedKeys]));
-        }
-
-        // En çok beğeni alandan en aza sırala ve en yüksek beğeni alan cümlenin başına "👑 Dersin Cümlesi" ekle
+        // En çok beğeni alandan en aza sırala ve en yüksek beğeni alan cümlenin başına "Dersin Cümlesi 👑" ekle
         function reorderBubbles() {
             const container = document.getElementById('bubbles-container');
             const sortedItems = [...sentencesMap.values()].sort((a, b) => {
@@ -599,35 +652,70 @@
             });
         }
 
+        function updateLikeButtonUI(btn, key, count) {
+            const isOwn = ownKeys.has(key);
+            const isLiked = votedKey === key;
+            btn.classList.toggle('liked', isLiked);
+            btn.classList.toggle('own-sentence', isOwn);
+            btn.title = isOwn ? 'Kendi cümleni beğenemezsin' : (isLiked ? 'Beğeniyi geri al' : 'Beğen');
+            btn.innerHTML = `👍️ <span>${count}</span>`;
+        }
+
+        // Her kullanıcı (yönetici dahil) kendi cümlesi hariç SADECE 1 cümleyi beğenebilir
         function toggleLike(key) {
-            const isCurrentlyLiked = likedKeys.has(key);
-            const delta = isCurrentlyLiked ? -1 : 1;
-
-            if (isCurrentlyLiked) {
-                likedKeys.delete(key);
-            } else {
-                likedKeys.add(key);
+            if (ownKeys.has(key)) {
+                showToast('Kendi cümleni beğenemezsin!');
+                return;
             }
-            saveLikedKeys();
 
-            const item = sentencesMap.get(key);
-            if (item) {
-                const newCount = Math.max(0, item.likes + delta);
-                item.likes = newCount;
-                updateLikeButtonUI(item.likeBtn, key, newCount);
+            // Zaten bu cümleyi beğenmişse beğeniyi geri al
+            if (votedKey === key) {
+                votedKey = null;
+                saveVotedKey();
+
+                const item = sentencesMap.get(key);
+                if (item) {
+                    item.likes = Math.max(0, item.likes - 1);
+                    updateLikeButtonUI(item.likeBtn, key, item.likes);
+                    reorderBubbles();
+                }
+
+                runTransaction(ref(db, 'cumleler/' + key + '/likes'), (currentLikes) => {
+                    return Math.max(0, (currentLikes || 0) - 1);
+                });
+                return;
+            }
+
+            // Daha önce başka bir cümleye oy verdiyse önceki oyunu otomatik düşür ve yenisine aktar
+            const previousKey = votedKey;
+            if (previousKey && sentencesMap.has(previousKey)) {
+                const prevItem = sentencesMap.get(previousKey);
+                prevItem.likes = Math.max(0, prevItem.likes - 1);
+                updateLikeButtonUI(prevItem.likeBtn, previousKey, prevItem.likes);
+
+                runTransaction(ref(db, 'cumleler/' + previousKey + '/likes'), (currentLikes) => {
+                    return Math.max(0, (currentLikes || 0) - 1);
+                });
+            }
+
+            // Yeni seçilen cümleye oy ver
+            votedKey = key;
+            saveVotedKey();
+
+            const newItem = sentencesMap.get(key);
+            if (newItem) {
+                newItem.likes = newItem.likes + 1;
+                updateLikeButtonUI(newItem.likeBtn, key, newItem.likes);
                 reorderBubbles();
             }
 
-            const likesRef = ref(db, 'cumleler/' + key + '/likes');
-            runTransaction(likesRef, (currentLikes) => {
-                return Math.max(0, (currentLikes || 0) + delta);
+            runTransaction(ref(db, 'cumleler/' + key + '/likes'), (currentLikes) => {
+                return (currentLikes || 0) + 1;
             });
-        }
 
-        function updateLikeButtonUI(btn, key, count) {
-            const isLiked = likedKeys.has(key);
-            btn.classList.toggle('liked', isLiked);
-            btn.innerHTML = `👍️ <span>${count}</span>`;
+            if (previousKey) {
+                showToast('Oyun bu cümleye aktarıldı.');
+            }
         }
 
         onChildAdded(ideasRef, (snapshot) => {
@@ -646,7 +734,7 @@
             const crownBadge = document.createElement('span');
             crownBadge.className = 'crown-badge';
             crownBadge.style.display = 'none';
-            crownBadge.innerText = '👑 Dersin Cümlesi';
+            crownBadge.innerText = 'Dersin Cümlesi 👑';
             bubble.appendChild(crownBadge);
 
             const textSpan = document.createElement('span');
@@ -657,7 +745,6 @@
             const likeBtn = document.createElement('button');
             likeBtn.className = 'like-btn';
             likeBtn.type = 'button';
-            likeBtn.title = 'Beğen';
             updateLikeButtonUI(likeBtn, key, likesCount);
             likeBtn.onclick = function() {
                 toggleLike(key);
@@ -704,8 +791,15 @@
                 item.element.remove();
             }
             sentencesMap.delete(key);
-            likedKeys.delete(key);
-            saveLikedKeys();
+
+            if (ownKeys.has(key)) {
+                ownKeys.delete(key);
+                saveOwnKeys();
+            }
+            if (votedKey === key) {
+                votedKey = null;
+                saveVotedKey();
+            }
             reorderBubbles();
         });
 
@@ -731,23 +825,34 @@
             sendBtn.disabled = true;
             sendBtn.innerText = 'Gönderiliyor...';
 
-            push(ideasRef, { text: formattedHtml, likes: 0, timestamp: now })
-                .then(() => {
-                    editor.innerHTML = '';
-                    updateToolbarState();
-                    document.getElementById('error-msg').innerText = '';
-                    document.getElementById('entry-view').style.display = 'none';
-                    document.getElementById('pool-view').style.display = 'block';
-                })
-                .catch((err) => {
-                    lastSentText = '';
-                    document.getElementById('error-msg').innerText = 'Hata oluştu: ' + err.message;
-                })
-                .finally(() => {
-                    isSubmitting = false;
-                    sendBtn.disabled = false;
-                    sendBtn.innerText = 'Gönder';
-                });
+            const newSentenceRef = push(ideasRef);
+            const newKey = newSentenceRef.key;
+
+            // Bu cümleyi kullanıcının kendi cümlesi olarak işaretle (beğenmesini engellemek için)
+            ownKeys.add(newKey);
+            saveOwnKeys();
+
+            import("https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js").then(({ set }) => {
+                set(newSentenceRef, { text: formattedHtml, likes: 0, timestamp: now })
+                    .then(() => {
+                        editor.innerHTML = '';
+                        updateToolbarState();
+                        document.getElementById('error-msg').innerText = '';
+                        document.getElementById('entry-view').style.display = 'none';
+                        document.getElementById('pool-view').style.display = 'block';
+                    })
+                    .catch((err) => {
+                        ownKeys.delete(newKey);
+                        saveOwnKeys();
+                        lastSentText = '';
+                        document.getElementById('error-msg').innerText = 'Hata oluştu: ' + err.message;
+                    })
+                    .finally(() => {
+                        isSubmitting = false;
+                        sendBtn.disabled = false;
+                        sendBtn.innerText = 'Gönder';
+                    });
+            });
         }
 
         document.getElementById('sendBtn').addEventListener('click', handleSend);
