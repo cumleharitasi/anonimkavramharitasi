@@ -17,6 +17,7 @@
 
         /* 1. EKRAN: CÜMLE GİRİŞ BÖLÜMÜ (AÇIK MAVİ ARKA PLAN) */
         #entry-view {
+            position: relative;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -79,6 +80,26 @@
             font-weight: bold;
         }
 
+        /* Alt Kısımdaki Kırmızı Yönetici Girişi Butonu */
+        .admin-login-btn {
+            position: absolute;
+            bottom: 22px;
+            background: #d32f2f;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            transition: transform 0.1s, background 0.2s;
+        }
+        .admin-login-btn:active {
+            transform: scale(0.96);
+            background: #b71c1c;
+        }
+
         /* 2. EKRAN: CÜMLE HAVUZU (ŞERİTSİZ KESİNTİSİZ MAVİ ARKA PLAN) */
         #pool-view {
             display: none;
@@ -87,11 +108,15 @@
             width: 100%;
             background: linear-gradient(135deg, #42a5f5 0%, #1e88e5 100%);
         }
-        .btn-add {
+        .top-actions {
             position: absolute;
             top: 16px;
             right: 16px;
             z-index: 10;
+            display: flex;
+            gap: 10px;
+        }
+        .btn-add {
             background: #0d47a1;
             color: white;
             border: none;
@@ -101,18 +126,25 @@
             font-weight: bold;
             cursor: pointer;
             box-shadow: 0 4px 12px rgba(13, 71, 161, 0.25);
-            transition: transform 0.1s, background 0.2s;
         }
-        .btn-add:active {
-            transform: scale(0.97);
-            background: #082f6e;
+        .btn-clear-all {
+            display: none; /* Sadece yönetici giriş yaptığında görünür */
+            background: #d32f2f;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
         }
 
         /* Baloncukların Serbestçe Yerleştiği Havuz Alanı */
         #bubbles-container {
             width: 100%;
             height: 100%;
-            padding: 68px 24px 24px 24px;
+            padding: 72px 24px 24px 24px;
             overflow-y: auto;
             display: flex;
             flex-wrap: wrap;
@@ -121,6 +153,7 @@
             gap: 16px;
         }
         .bubble {
+            position: relative;
             padding: 16px 22px;
             border-radius: 24px;
             font-size: 16px;
@@ -137,6 +170,92 @@
             transform: scale(1.04);
         }
 
+        /* Tekli Cümle Silme İkonu (Sadece Yönetici Modunda Görünür) */
+        .delete-single-btn {
+            display: none;
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #d32f2f;
+            color: white;
+            border: 2px solid white;
+            font-size: 12px;
+            font-weight: bold;
+            line-height: 20px;
+            text-align: center;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+        body.admin-mode .delete-single-btn {
+            display: block;
+        }
+        body.admin-mode .btn-clear-all {
+            display: block;
+        }
+
+        /* Şifre Giriş Modal Penceresi */
+        #admin-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.55);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .modal-card {
+            background: white;
+            padding: 24px;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 340px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .modal-card h3 {
+            color: #0d47a1;
+            margin-bottom: 14px;
+            font-size: 20px;
+        }
+        .modal-card input {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border: 2px solid #cfd8dc;
+            border-radius: 10px;
+            outline: none;
+            margin-bottom: 14px;
+            text-align: center;
+        }
+        .modal-card input:focus {
+            border-color: #0d47a1;
+        }
+        .modal-btns {
+            display: flex;
+            gap: 10px;
+        }
+        .modal-btns button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .btn-confirm { background: #d32f2f; color: white; }
+        .btn-cancel { background: #eceff1; color: #333; }
+        #admin-error {
+            color: #d32f2f;
+            font-size: 13px;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
         @keyframes popIn {
             0% { opacity: 0; transform: scale(0.6); }
             100% { opacity: 1; transform: scale(1); }
@@ -151,17 +270,36 @@
         <textarea id="sentenceInput" placeholder="Buraya yazdıkların tamamen gizlidir, kimin yazdığı kesinlikle görünmez. İçinden geçen cümleyi rahatça yazabilirsin..." maxlength="140"></textarea>
         <button class="send-btn" onclick="submitSentence()">Gönder</button>
         <div id="error-msg"></div>
+
+        <!-- Yönetici Girişi Butonu -->
+        <button class="admin-login-btn" onclick="openAdminModal()">Yönetici Girişi</button>
     </div>
 
     <!-- 2. EKRAN: CÜMLE HAVUZU -->
     <div id="pool-view">
-        <button class="btn-add" onclick="openEntry()">+ Cümle Yaz</button>
+        <div class="top-actions">
+            <button class="btn-clear-all" onclick="clearAllSentences()">Tümünü Temizle</button>
+            <button class="btn-add" onclick="openEntry()">+ Cümle Yaz</button>
+        </div>
         <div id="bubbles-container"></div>
+    </div>
+
+    <!-- YÖNETİCİ ŞİFRE PENCERESİ -->
+    <div id="admin-modal">
+        <div class="modal-card">
+            <h3>Yönetici Girişi</h3>
+            <input type="password" id="adminPassInput" placeholder="Şifreyi giriniz..." onkeypress="if(event.key==='Enter') checkAdminPassword()">
+            <div class="modal-btns">
+                <button class="btn-cancel" onclick="closeAdminModal()">İptal</button>
+                <button class="btn-confirm" onclick="checkAdminPassword()">Giriş Yap</button>
+            </div>
+            <div id="admin-error"></div>
+        </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getDatabase, ref, push, onChildAdded, onChildRemoved, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCKyoNQaWgh61lLY24ard-Q5WCS3CdIn6k",
@@ -184,20 +322,46 @@
         ];
         let colorIndex = 0;
 
+        // Veritabanına yeni cümle eklendiğinde tüm ekranlara baloncuk ekle
         onChildAdded(ideasRef, (snapshot) => {
             const val = snapshot.val();
+            const key = snapshot.key;
             if (!val || !val.text) return;
 
             colorIndex++;
             const container = document.getElementById('bubbles-container');
+            
             const bubble = document.createElement('div');
             bubble.className = 'bubble';
-            bubble.innerText = val.text;
+            bubble.id = 'bubble-' + key;
             bubble.style.backgroundColor = colors[colorIndex % colors.length];
-            
+
+            const textSpan = document.createElement('span');
+            textSpan.innerText = val.text;
+            bubble.appendChild(textSpan);
+
+            // Tekli silme butonu (sadece yönetici modunda görünür)
+            const delBtn = document.createElement('button');
+            delBtn.className = 'delete-single-btn';
+            delBtn.innerText = '✕';
+            delBtn.title = 'Bu cümleyi sil';
+            delBtn.onclick = function() {
+                remove(ref(db, 'cumleler/' + key));
+            };
+            bubble.appendChild(delBtn);
+
             container.appendChild(bubble);
         });
 
+        // Yönetici bir cümleyi veya tümünü sildiğinde tüm cihazların ekranından anında kaldır
+        onChildRemoved(ideasRef, (snapshot) => {
+            const removedEl = document.getElementById('bubble-' + snapshot.key);
+            if (removedEl) {
+                removedEl.remove();
+            }
+        });
+
+        // Öğrenci Cümle Gönderimi
         window.submitSentence = function() {
             const input = document.getElementById('sentenceInput');
             const text = input.value.trim();
@@ -218,6 +382,38 @@
         window.openEntry = function() {
             document.getElementById('pool-view').style.display = 'none';
             document.getElementById('entry-view').style.display = 'flex';
+        };
+
+        // Yönetici Modal İşlemleri
+        window.openAdminModal = function() {
+            document.getElementById('admin-modal').style.display = 'flex';
+            document.getElementById('adminPassInput').value = '';
+            document.getElementById('admin-error').innerText = '';
+            document.getElementById('adminPassInput').focus();
+        };
+
+        window.closeAdminModal = function() {
+            document.getElementById('admin-modal').style.display = 'none';
+        };
+
+        window.checkAdminPassword = function() {
+            const pass = document.getElementById('adminPassInput').value;
+            if (pass === 'Baran123') {
+                document.body.classList.add('admin-mode');
+                closeAdminModal();
+                // Cümle yazmadan doğrudan havuza geçiş
+                document.getElementById('entry-view').style.display = 'none';
+                document.getElementById('pool-view').style.display = 'block';
+            } else {
+                document.getElementById('admin-error').innerText = 'Hatalı şifre!';
+            }
+        };
+
+        // Tüm Havuzu Silme (Sadece Yönetici)
+        window.clearAllSentences = function() {
+            if (confirm("Havuzdaki TÜM cümleler kalıcı olarak silinecek. Emin misiniz?")) {
+                remove(ideasRef);
+            }
         };
     </script>
 </body>
