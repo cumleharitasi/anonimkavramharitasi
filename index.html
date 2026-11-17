@@ -2,54 +2,162 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Canlı Kavram Haritası</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Canlı Cümle Havuzu</title>
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background: #f4f7f6; }
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background: #f4f7f6; overflow: hidden; }
         
-        /* TELEFON (KATILIMCI) GÖRÜNÜMÜ */
-        #student-view { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; padding: 20px; box-sizing: border-box; text-align: center; }
-        #student-view h2 { color: #333; margin-bottom: 5px; }
-        #topic-display { color: #46178f; font-weight: bold; margin-bottom: 20px; font-size: 18px; }
-        input { width: 100%; max-width: 400px; padding: 15px; margin: 10px 0; font-size: 16px; border-radius: 10px; border: 2px solid #ddd; outline: none; box-sizing: border-box; }
-        input:focus { border-color: #46178f; }
-        button.send-btn { width: 100%; max-width: 400px; padding: 15px; margin: 10px 0; font-size: 18px; border-radius: 10px; background: #46178f; color: white; border: none; font-weight: bold; cursor: pointer; }
-        button.send-btn:active { background: #33106b; }
-        #status { color: #2e7d32; font-weight: bold; min-height: 24px; margin-top: 10px; }
+        /* 1. AŞAMA: TELEFON CÜMLE GİRİŞ EKRANI */
+        #entry-view {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            padding: 24px;
+            text-align: center;
+            background: linear-gradient(135deg, #46178f 0%, #2b0d59 100%);
+            color: white;
+        }
+        #entry-view h2 { margin: 0 0 8px 0; font-size: 24px; }
+        #topic-display {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 16px;
+            margin-bottom: 24px;
+            font-weight: 500;
+        }
+        textarea {
+            width: 100%;
+            max-width: 420px;
+            height: 110px;
+            padding: 16px;
+            font-size: 17px;
+            font-family: inherit;
+            border-radius: 14px;
+            border: none;
+            outline: none;
+            resize: none;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+        button.send-btn {
+            width: 100%;
+            max-width: 420px;
+            padding: 16px;
+            margin-top: 16px;
+            font-size: 18px;
+            border-radius: 14px;
+            background: #26890c;
+            color: white;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            transition: transform 0.15s, background 0.2s;
+        }
+        button.send-btn:active { transform: scale(0.97); background: #1e6e09; }
+        .anon-note { font-size: 13px; opacity: 0.8; margin-top: 12px; }
+        #error-msg { color: #ff8a80; font-size: 14px; margin-top: 10px; font-weight: bold; }
 
-        /* TAHTA (KAVRAM HARİTASI) GÖRÜNÜMÜ */
-        #board-view { display: none; width: 100vw; height: 100vh; position: relative; background: #ffffff; }
+        /* 2. AŞAMA: CÜMLE HAVUZU (KAVRAM HARİTASI) EKRANI */
+        #pool-view {
+            display: none;
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            background: #ffffff;
+        }
         #mynetwork { width: 100%; height: 100%; }
-        
-        #board-controls { position: absolute; top: 15px; right: 15px; z-index: 10; display: flex; gap: 10px; background: rgba(255,255,255,0.95); padding: 10px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-        #topic-input { padding: 8px 12px; font-size: 14px; border: 1px solid #ccc; border-radius: 6px; width: 200px; margin: 0; }
+
+        /* Katılımcı Havuz Üst Bilgi Çubuğu */
+        #student-pool-header {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            right: 12px;
+            z-index: 10;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.92);
+            padding: 10px 16px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        #student-pool-header span { font-weight: bold; color: #46178f; font-size: 15px; }
+        .btn-new-idea {
+            background: #46178f;
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        /* Sadece Tahta (?tahta=1) Görünümündeki Kontroller */
+        #board-controls {
+            display: none;
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            z-index: 10;
+            gap: 10px;
+            background: rgba(255,255,255,0.95);
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        #topic-input { padding: 8px 12px; font-size: 14px; border: 1px solid #ccc; border-radius: 6px; width: 200px; }
         .ctrl-btn { padding: 8px 14px; font-size: 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; }
         .btn-update { background: #1976d2; }
         .btn-clear { background: #d32f2f; }
 
-        #qr-box { position: absolute; bottom: 15px; left: 15px; z-index: 10; background: white; padding: 12px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); text-align: center; }
+        #qr-box {
+            display: none;
+            position: absolute;
+            bottom: 15px;
+            left: 15px;
+            z-index: 10;
+            background: white;
+            padding: 12px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            text-align: center;
+        }
         #qr-box img { width: 130px; height: 130px; display: block; margin: 0 auto 5px; }
         #qr-box span { font-size: 12px; font-weight: bold; color: #333; }
     </style>
 </head>
 <body>
 
-    <!-- KATILIMCI (TELEFON) EKRANI -->
-    <div id="student-view">
-        <h2>Kavram Haritasına Katıl</h2>
+    <!-- 1. EKRAN: CÜMLE GİRİŞ BÖLÜMÜ (TELEFONLAR İÇİN) -->
+    <div id="entry-view">
+        <h2>Cümleni Yaz</h2>
         <div id="topic-display">Konu: ANA KONU</div>
-        <input type="text" id="sentenceInput" placeholder="Cümleni veya fikrini yaz..." maxlength="90" onkeypress="if(event.key==='Enter') sendSentence()">
-        <button class="send-btn" onclick="sendSentence()">Tahtaya Gönder</button>
-        <div id="status"></div>
+        <textarea id="sentenceInput" placeholder="Düşünceni veya cümleni buraya yaz..." maxlength="110"></textarea>
+        <button class="send-btn" onclick="submitAndShowPool()">Gönder ve Havuzu Gör</button>
+        <div class="anon-note">🔒 Gönderdiğin cümle tamamen anonim olarak paylaşılır.</div>
+        <div id="error-msg"></div>
     </div>
 
-    <!-- TAHTA (KAVRAM HARİTASI) EKRANI -->
-    <div id="board-view">
+    <!-- 2. EKRAN: CÜMLE HAVUZU / KAVRAM HARİTASI (HEM TELEFON HEM TAHTA) -->
+    <div id="pool-view">
+        <!-- Katılımcı Telefondayken Görünecek Üst Bar -->
+        <div id="student-pool-header">
+            <span>Canlı Cümle Havuzu</span>
+            <button class="btn-new-idea" onclick="backToEntry()">+ Yeni Cümle Yaz</button>
+        </div>
+
+        <!-- Sadece Akıllı Tahtada (?tahta=1) Görünecek Yönetim Paneli -->
         <div id="board-controls">
             <input type="text" id="topic-input" placeholder="Ana Konu Başlığı...">
             <button class="ctrl-btn btn-update" onclick="updateTopic()">Başlığı Güncelle</button>
-            <button class="ctrl-btn btn-clear" onclick="clearBoard()">Tahtayı Temizle</button>
+            <button class="ctrl-btn btn-clear" onclick="clearBoard()">Havuzu Temizle</button>
         </div>
 
         <div id="qr-box">
@@ -60,20 +168,6 @@
         <div id="mynetwork"></div>
     </div>
 
-    <!-- ÖNCE ARAYÜZÜ ANINDA AÇAN STANDART SCRIPT -->
-    <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        const isBoard = urlParams.get('tahta') === '1';
-
-        if (isBoard) {
-            document.getElementById('student-view').style.display = 'none';
-            document.getElementById('board-view').style.display = 'block';
-            const studentUrl = window.location.href.split('?')[0];
-            document.getElementById('qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(studentUrl)}`;
-        }
-    </script>
-
-    <!-- SONRA FIREBASE BAĞLANTISINI KURAN SCRIPT -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, push, onChildAdded, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
@@ -88,57 +182,124 @@
             appId: "1:381651848442:web:1fe29e5e40548aa4f6cd43"
         };
 
-        try {
-            const app = initializeApp(firebaseConfig);
-            const db = getDatabase(app);
-            const ideasRef = ref(db, 'cumleler');
-            const topicRef = ref(db, 'anaKonu');
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const ideasRef = ref(db, 'cumleler');
+        const topicRef = ref(db, 'anaKonu');
 
-            if (isBoard) {
-                initBoard(ideasRef, topicRef);
-            } else {
-                onValue(topicRef, (snapshot) => {
-                    const topic = snapshot.val() || "ANA KONU";
-                    document.getElementById('topic-display').innerText = "Konu: " + topic;
-                });
-            }
+        const urlParams = new URLSearchParams(window.location.search);
+        const isBoard = urlParams.get('tahta') === '1';
+        let networkInitialized = false;
 
-            window.sendSentence = function() {
-                const input = document.getElementById('sentenceInput');
-                const text = input.value.trim();
-                if (!text) return;
+        // Eğer tahta linkiyle (?tahta=1) girildiyse giriş ekranını atla, doğrudan havuzu aç
+        if (isBoard) {
+            document.getElementById('entry-view').style.display = 'none';
+            document.getElementById('pool-view').style.display = 'block';
+            document.getElementById('student-pool-header').style.display = 'none';
+            document.getElementById('board-controls').style.display = 'flex';
+            document.getElementById('qr-box').style.display = 'block';
 
-                push(ideasRef, { text: text, timestamp: Date.now() })
-                    .then(() => {
-                        input.value = '';
-                        document.getElementById('status').style.color = '#2e7d32';
-                        document.getElementById('status').innerText = '✓ Tahtaya gönderildi!';
-                        setTimeout(() => document.getElementById('status').innerText = '', 2000);
-                    })
-                    .catch((err) => {
-                        document.getElementById('status').style.color = 'red';
-                        document.getElementById('status').innerText = 'Hata: ' + err.message;
-                    });
-            };
-
-            window.updateTopic = function() {
-                const newTopic = document.getElementById('topic-input').value.trim();
-                if (newTopic) {
-                    set(topicRef, newTopic);
-                    document.getElementById('topic-input').value = '';
-                }
-            };
-
-            window.clearBoard = function() {
-                if (confirm("Tahtadaki tüm cümleler silinecek. Emin misin?")) {
-                    remove(ideasRef).then(() => location.reload());
-                }
-            };
-
-        } catch (error) {
-            alert("Firebase Bağlantı Hatası: " + error.message);
+            const studentUrl = window.location.href.split('?')[0];
+            document.getElementById('qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(studentUrl)}`;
+            
+            initNetwork();
+        } else {
+            // Telefon ekranında güncel konuyu göster
+            onValue(topicRef, (snapshot) => {
+                const topic = snapshot.val() || "ANA KONU";
+                document.getElementById('topic-display').innerText = "Konu: " + topic;
+            });
         }
 
-        function initBoard(ideasRef, topicRef) {
-            if (typeof vis === 'undefined') {
-                alert("Harita kütüphanesi yüklenemed
+        // Telefondan Cümleyi Gönder ve Yazma Ekranını Kapatıp Havuzu Aç
+        window.submitAndShowPool = function() {
+            const input = document.getElementById('sentenceInput');
+            const text = input.value.trim();
+            if (!text) return;
+
+            push(ideasRef, { text: text, timestamp: Date.now() })
+                .then(() => {
+                    input.value = '';
+                    document.getElementById('error-msg').innerText = '';
+                    // Yazma ekranını kapat, havuzu aç
+                    document.getElementById('entry-view').style.display = 'none';
+                    document.getElementById('pool-view').style.display = 'block';
+                    
+                    if (!networkInitialized) {
+                        initNetwork();
+                    }
+                })
+                .catch((err) => {
+                    document.getElementById('error-msg').innerText = 'Gönderilemedi: ' + err.message;
+                });
+        };
+
+        // İsteğe bağlı: Tekrar yeni cümle yazma ekranına dön
+        window.backToEntry = function() {
+            document.getElementById('pool-view').style.display = 'none';
+            document.getElementById('entry-view').style.display = 'flex';
+        };
+
+        // Tahta: Ana Konu Başlığını Güncelle
+        window.updateTopic = function() {
+            const newTopic = document.getElementById('topic-input').value.trim();
+            if (newTopic) {
+                set(topicRef, newTopic);
+                document.getElementById('topic-input').value = '';
+            }
+        };
+
+        // Tahta: Havuzu Temizle
+        window.clearBoard = function() {
+            if (confirm("Havuzdaki tüm cümleler silinecek. Emin misin?")) {
+                remove(ideasRef).then(() => location.reload());
+            }
+        };
+
+        // Kavram Haritası (Cümle Havuzu) Oluşturucu
+        function initNetwork() {
+            networkInitialized = true;
+            const nodes = new vis.DataSet([
+                { id: 0, label: 'ANA KONU', color: { background: '#46178f', border: '#2b0d59' }, font: { color: 'white', size: 22, bold: true }, margin: 16 }
+            ]);
+            const edges = new vis.DataSet([]);
+
+            onValue(topicRef, (snapshot) => {
+                const topic = snapshot.val() || "ANA KONU";
+                nodes.update({ id: 0, label: topic });
+            });
+
+            const container = document.getElementById('mynetwork');
+            const network = new vis.Network(container, { nodes: nodes, edges: edges }, {
+                nodes: {
+                    shape: 'box',
+                    margin: 12,
+                    borderWidth: 2,
+                    font: { size: 15, face: 'Segoe UI' },
+                    widthConstraint: { maximum: 200 }
+                },
+                edges: { color: '#b0bec5', width: 2 },
+                physics: {
+                    stabilization: false,
+                    barnesHut: { springLength: 160, gravitationalConstant: -2500 }
+                }
+            });
+
+            const colors = ['#e1bee7', '#bbdefb', '#c8e6c9', '#fff9c4', '#ffccbc', '#b2ebf2'];
+            let nodeId = 1;
+
+            onChildAdded(ideasRef, (snapshot) => {
+                const val = snapshot.val();
+                const randomColor = colors[nodeId % colors.length];
+                nodes.add({
+                    id: nodeId,
+                    label: val.text,
+                    color: { background: randomColor, border: '#90a4ae' }
+                });
+                edges.add({ from: 0, to: nodeId });
+                nodeId++;
+            });
+        }
+    </script>
+</body>
+</html>
