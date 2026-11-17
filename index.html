@@ -21,19 +21,11 @@
             background: linear-gradient(135deg, #46178f 0%, #2b0d59 100%);
             color: white;
         }
-        #entry-view h2 { margin: 0 0 8px 0; font-size: 24px; }
-        #topic-display {
-            background: rgba(255, 255, 255, 0.15);
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 16px;
-            margin-bottom: 24px;
-            font-weight: 500;
-        }
+        #entry-view h2 { margin: 0 0 20px 0; font-size: 26px; }
         textarea {
             width: 100%;
             max-width: 420px;
-            height: 110px;
+            height: 120px;
             padding: 16px;
             font-size: 17px;
             font-family: inherit;
@@ -62,7 +54,7 @@
         .anon-note { font-size: 13px; opacity: 0.8; margin-top: 12px; }
         #error-msg { color: #ff8a80; font-size: 14px; margin-top: 10px; font-weight: bold; }
 
-        /* 2. AŞAMA: CÜMLE HAVUZU (KAVRAM HARİTASI) EKRANI */
+        /* 2. AŞAMA: CÜMLE HAVUZU EKRANI */
         #pool-view {
             display: none;
             width: 100vw;
@@ -99,23 +91,19 @@
             cursor: pointer;
         }
 
-        /* Sadece Tahta (?tahta=1) Görünümündeki Kontroller */
+        /* Sadece Tahta (?tahta=1) Görünümündeki Temizleme Butonu */
         #board-controls {
             display: none;
             position: absolute;
             top: 15px;
             right: 15px;
             z-index: 10;
-            gap: 10px;
             background: rgba(255,255,255,0.95);
-            padding: 10px;
+            padding: 8px;
             border-radius: 10px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
-        #topic-input { padding: 8px 12px; font-size: 14px; border: 1px solid #ccc; border-radius: 6px; width: 200px; }
-        .ctrl-btn { padding: 8px 14px; font-size: 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; }
-        .btn-update { background: #1976d2; }
-        .btn-clear { background: #d32f2f; }
+        .btn-clear { padding: 10px 16px; font-size: 14px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color: white; background: #d32f2f; }
 
         #qr-box {
             display: none;
@@ -138,14 +126,13 @@
     <!-- 1. EKRAN: CÜMLE GİRİŞ BÖLÜMÜ (TELEFONLAR İÇİN) -->
     <div id="entry-view">
         <h2>Cümleni Yaz</h2>
-        <div id="topic-display">Konu: ANA KONU</div>
         <textarea id="sentenceInput" placeholder="Düşünceni veya cümleni buraya yaz..." maxlength="110"></textarea>
         <button class="send-btn" onclick="submitAndShowPool()">Gönder ve Havuzu Gör</button>
         <div class="anon-note">🔒 Gönderdiğin cümle tamamen anonim olarak paylaşılır.</div>
         <div id="error-msg"></div>
     </div>
 
-    <!-- 2. EKRAN: CÜMLE HAVUZU / KAVRAM HARİTASI (HEM TELEFON HEM TAHTA) -->
+    <!-- 2. EKRAN: BAĞIMSIZ CÜMLE HAVUZU (HEM TELEFON HEM TAHTA) -->
     <div id="pool-view">
         <!-- Katılımcı Telefondayken Görünecek Üst Bar -->
         <div id="student-pool-header">
@@ -153,11 +140,9 @@
             <button class="btn-new-idea" onclick="backToEntry()">+ Yeni Cümle Yaz</button>
         </div>
 
-        <!-- Sadece Akıllı Tahtada (?tahta=1) Görünecek Yönetim Paneli -->
+        <!-- Sadece Akıllı Tahtada (?tahta=1) Görünecek Temizleme Butonu -->
         <div id="board-controls">
-            <input type="text" id="topic-input" placeholder="Ana Konu Başlığı...">
-            <button class="ctrl-btn btn-update" onclick="updateTopic()">Başlığı Güncelle</button>
-            <button class="ctrl-btn btn-clear" onclick="clearBoard()">Havuzu Temizle</button>
+            <button class="btn-clear" onclick="clearBoard()">Havuzu Temizle</button>
         </div>
 
         <div id="qr-box">
@@ -170,7 +155,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, push, onChildAdded, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getDatabase, ref, push, onChildAdded, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCKyoNQaWgh61lLY24ard-Q5WCS3CdIn6k",
@@ -185,30 +170,23 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
         const ideasRef = ref(db, 'cumleler');
-        const topicRef = ref(db, 'anaKonu');
 
         const urlParams = new URLSearchParams(window.location.search);
         const isBoard = urlParams.get('tahta') === '1';
         let networkInitialized = false;
 
-        // Eğer tahta linkiyle (?tahta=1) girildiyse giriş ekranını atla, doğrudan havuzu aç
+        // Tahta linkiyle (?tahta=1) girildiyse doğrudan havuzu aç
         if (isBoard) {
             document.getElementById('entry-view').style.display = 'none';
             document.getElementById('pool-view').style.display = 'block';
             document.getElementById('student-pool-header').style.display = 'none';
-            document.getElementById('board-controls').style.display = 'flex';
+            document.getElementById('board-controls').style.display = 'block';
             document.getElementById('qr-box').style.display = 'block';
 
             const studentUrl = window.location.href.split('?')[0];
             document.getElementById('qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(studentUrl)}`;
             
             initNetwork();
-        } else {
-            // Telefon ekranında güncel konuyu göster
-            onValue(topicRef, (snapshot) => {
-                const topic = snapshot.val() || "ANA KONU";
-                document.getElementById('topic-display').innerText = "Konu: " + topic;
-            });
         }
 
         // Telefondan Cümleyi Gönder ve Yazma Ekranını Kapatıp Havuzu Aç
@@ -221,7 +199,6 @@
                 .then(() => {
                     input.value = '';
                     document.getElementById('error-msg').innerText = '';
-                    // Yazma ekranını kapat, havuzu aç
                     document.getElementById('entry-view').style.display = 'none';
                     document.getElementById('pool-view').style.display = 'block';
                     
@@ -234,19 +211,10 @@
                 });
         };
 
-        // İsteğe bağlı: Tekrar yeni cümle yazma ekranına dön
+        // Tekrar yeni cümle yazma ekranına dön
         window.backToEntry = function() {
             document.getElementById('pool-view').style.display = 'none';
             document.getElementById('entry-view').style.display = 'flex';
-        };
-
-        // Tahta: Ana Konu Başlığını Güncelle
-        window.updateTopic = function() {
-            const newTopic = document.getElementById('topic-input').value.trim();
-            if (newTopic) {
-                set(topicRef, newTopic);
-                document.getElementById('topic-input').value = '';
-            }
         };
 
         // Tahta: Havuzu Temizle
@@ -256,36 +224,36 @@
             }
         };
 
-        // Kavram Haritası (Cümle Havuzu) Oluşturucu
+        // Bağımsız Cümle Baloncukları Oluşturucu
         function initNetwork() {
             networkInitialized = true;
-            const nodes = new vis.DataSet([
-                { id: 0, label: 'ANA KONU', color: { background: '#46178f', border: '#2b0d59' }, font: { color: 'white', size: 22, bold: true }, margin: 16 }
-            ]);
-            const edges = new vis.DataSet([]);
-
-            onValue(topicRef, (snapshot) => {
-                const topic = snapshot.val() || "ANA KONU";
-                nodes.update({ id: 0, label: topic });
-            });
+            const nodes = new vis.DataSet([]);
+            const edges = new vis.DataSet([]); // Çizgiler tamamen boş
 
             const container = document.getElementById('mynetwork');
             const network = new vis.Network(container, { nodes: nodes, edges: edges }, {
                 nodes: {
                     shape: 'box',
-                    margin: 12,
+                    margin: 14,
                     borderWidth: 2,
-                    font: { size: 15, face: 'Segoe UI' },
-                    widthConstraint: { maximum: 200 }
+                    borderRadius: 10,
+                    font: { size: 16, face: 'Segoe UI', color: '#222' },
+                    widthConstraint: { maximum: 220 },
+                    shadow: { enabled: true, color: 'rgba(0,0,0,0.1)', size: 6, x: 2, y: 2 }
                 },
-                edges: { color: '#b0bec5', width: 2 },
                 physics: {
-                    stabilization: false,
-                    barnesHut: { springLength: 160, gravitationalConstant: -2500 }
+                    enabled: true,
+                    solver: 'repulsion', // Balonların üst üste binmesini önler, birbirini hafifçe iter
+                    repulsion: {
+                        nodeDistance: 140,
+                        centralGravity: 0.15, // Balonların ekran dışına kaçıp dağılmasını önler, merkezde toplar
+                        springLength: 100,
+                        damping: 0.2
+                    }
                 }
             });
 
-            const colors = ['#e1bee7', '#bbdefb', '#c8e6c9', '#fff9c4', '#ffccbc', '#b2ebf2'];
+            const colors = ['#e1bee7', '#bbdefb', '#c8e6c9', '#fff9c4', '#ffccbc', '#b2ebf2', '#f8bbd0'];
             let nodeId = 1;
 
             onChildAdded(ideasRef, (snapshot) => {
@@ -294,9 +262,12 @@
                 nodes.add({
                     id: nodeId,
                     label: val.text,
-                    color: { background: randomColor, border: '#90a4ae' }
+                    color: {
+                        background: randomColor,
+                        border: 'rgba(0,0,0,0.15)',
+                        highlight: { background: randomColor, border: '#46178f' }
+                    }
                 });
-                edges.add({ from: 0, to: nodeId });
                 nodeId++;
             });
         }
