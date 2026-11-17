@@ -58,7 +58,7 @@
         .editor-toolbar {
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            justify-content: flex-start;
             padding: 8px 12px;
             background: #f1f6fb;
             border-bottom: 1px solid #dce7f2;
@@ -89,16 +89,12 @@
         }
         .fmt-bold { font-weight: 800; }
         .fmt-italic { font-style: italic; font-family: Georgia, serif; }
-        .char-counter {
-            font-size: 12px;
-            color: #607d8b;
-            font-weight: 600;
-        }
+        .fmt-underline { text-decoration: underline; text-underline-offset: 2px; font-weight: 600; }
 
         /* Zengin Metin Yazma Alanı */
         #sentenceEditor {
             width: 100%;
-            height: 125px;
+            height: 135px;
             padding: 14px 16px;
             font-size: 16px;
             line-height: 1.5;
@@ -288,6 +284,10 @@
         .bubble-text i, .bubble-text em {
             font-style: italic;
         }
+        .bubble-text u {
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
 
         /* Beğeni Butonu */
         .like-btn {
@@ -421,8 +421,8 @@
                     <div class="format-group">
                         <button type="button" id="boldBtn" class="fmt-btn fmt-bold" title="Kalın Yaz" onmousedown="event.preventDefault(); applyFormat('bold')">K</button>
                         <button type="button" id="italicBtn" class="fmt-btn fmt-italic" title="İtalik Yaz" onmousedown="event.preventDefault(); applyFormat('italic')">İ</button>
+                        <button type="button" id="underlineBtn" class="fmt-btn fmt-underline" title="Altı Çizili Yaz" onmousedown="event.preventDefault(); applyFormat('underline')">A</button>
                     </div>
-                    <span id="charCount" class="char-counter">0 / 140</span>
                 </div>
                 <div id="sentenceEditor" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Buraya yazdıkların tamamen gizlidir, kimin yazdığı kesinlikle görünmez. İçinden geçen cümleyi rahatça yazabilirsin..."></div>
             </div>
@@ -482,7 +482,6 @@
             '#f8bbd0', '#e1bee7', '#dcedc8'
         ];
 
-        const MAX_CHARS = 140;
         const sentencesMap = new Map();
         const likedKeys = new Set(JSON.parse(localStorage.getItem('likedSentences') || '[]'));
         let colorIndex = 0;
@@ -491,11 +490,11 @@
         let lastSentTime = 0;
 
         const editor = document.getElementById('sentenceEditor');
-        const charCountEl = document.getElementById('charCount');
         const boldBtn = document.getElementById('boldBtn');
         const italicBtn = document.getElementById('italicBtn');
+        const underlineBtn = document.getElementById('underlineBtn');
 
-        // Sadece kalın (b, strong) ve italik (i, em) etiketlerine izin veren güvenli temizleyici
+        // Sadece kalın (b, strong), italik (i, em) ve altı çizili (u) etiketlerine izin veren güvenli temizleyici
         function sanitizeFormattedHTML(rawHtml) {
             const temp = document.createElement('div');
             temp.innerHTML = rawHtml;
@@ -512,6 +511,7 @@
                 let targetTag = null;
                 if (tag === 'b' || tag === 'strong') targetTag = 'b';
                 else if (tag === 'i' || tag === 'em') targetTag = 'i';
+                else if (tag === 'u') targetTag = 'u';
                 else if (tag === 'br') return document.createElement('br');
 
                 const container = targetTag ? document.createElement(targetTag) : document.createDocumentFragment();
@@ -535,11 +535,7 @@
         function updateToolbarState() {
             boldBtn.classList.toggle('active', document.queryCommandState('bold'));
             italicBtn.classList.toggle('active', document.queryCommandState('italic'));
-        }
-
-        function updateCharCounter() {
-            const plainText = editor.innerText.replace(/\n/g, '');
-            charCountEl.innerText = `${plainText.length} / ${MAX_CHARS}`;
+            underlineBtn.classList.toggle('active', document.queryCommandState('underline'));
         }
 
         window.applyFormat = function(command) {
@@ -552,29 +548,13 @@
         editor.addEventListener('paste', (e) => {
             e.preventDefault();
             const text = (e.clipboardData || window.clipboardData).getData('text/plain');
-            const currentLen = editor.innerText.replace(/\n/g, '').length;
-            const remaining = MAX_CHARS - currentLen;
-            if (remaining > 0) {
-                document.execCommand('insertText', false, text.slice(0, remaining));
-            }
-        });
-
-        // Karakter sınırı kontrolü
-        editor.addEventListener('beforeinput', (e) => {
-            if (e.inputType && e.inputType.startsWith('insert')) {
-                const selectionLen = window.getSelection().toString().length;
-                const currentLen = editor.innerText.replace(/\n/g, '').length - selectionLen;
-                if (currentLen >= MAX_CHARS) {
-                    e.preventDefault();
-                }
-            }
+            document.execCommand('insertText', false, text);
         });
 
         editor.addEventListener('input', () => {
             if (editor.innerText.trim() === '' && editor.innerHTML !== '') {
                 editor.innerHTML = '';
             }
-            updateCharCounter();
             updateToolbarState();
         });
 
@@ -645,7 +625,6 @@
 
             const textSpan = document.createElement('span');
             textSpan.className = 'bubble-text';
-            // Güvenli kalın/italik biçimlendirmesiyle havuza yansıt
             textSpan.innerHTML = sanitizeFormattedHTML(val.text);
             bubble.appendChild(textSpan);
 
@@ -727,7 +706,6 @@
             push(ideasRef, { text: formattedHtml, likes: 0, timestamp: now })
                 .then(() => {
                     editor.innerHTML = '';
-                    updateCharCounter();
                     updateToolbarState();
                     document.getElementById('error-msg').innerText = '';
                     document.getElementById('entry-view').style.display = 'none';
