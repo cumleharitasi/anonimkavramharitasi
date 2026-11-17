@@ -139,19 +139,6 @@
             cursor: not-allowed;
             transform: none;
         }
-        .btn-go-pool {
-            display: none;
-            width: 100%;
-            padding: 13px;
-            margin-top: 10px;
-            font-size: 15px;
-            border-radius: 12px;
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            border: 1.5px solid rgba(255, 255, 255, 0.7);
-            font-weight: bold;
-            cursor: pointer;
-        }
         .spelling-note {
             color: #ffffff;
             font-size: 13.5px;
@@ -508,7 +495,6 @@
                 </div>
             </div>
             <button id="sendBtn" class="send-btn" type="button">Gönder</button>
-            <button id="goPoolBtn" class="btn-go-pool" type="button" onclick="goToPool()">Cümle Havuzuna Git</button>
             <div class="spelling-note">Cümleni kurarken büyük harf, noktalama işaretleri ve yazım kurallarına özen göster.</div>
             <div id="error-msg"></div>
         </div>
@@ -607,19 +593,11 @@
             }
         }
 
-        // Kullanıcının havuzda aktif cümlesi varsa yeni cümle yazma butonunu gizle / uyar
+        // Kullanıcının havuzda aktif cümlesi varsa "+ Cümle Yaz" butonunu gizle
         function updateWritePermissionUI() {
             const hasActiveOwn = ownSentenceKey && sentencesMap.has(ownSentenceKey);
             const addTopBtn = document.getElementById('addSentenceTopBtn');
-            const goPoolBtn = document.getElementById('goPoolBtn');
-
-            if (hasActiveOwn) {
-                addTopBtn.style.display = 'none';
-                goPoolBtn.style.display = 'block';
-            } else {
-                addTopBtn.style.display = 'block';
-                goPoolBtn.style.display = sentencesMap.size > 0 ? 'block' : 'none';
-            }
+            addTopBtn.style.display = hasActiveOwn ? 'none' : 'block';
         }
 
         function sanitizeFormattedHTML(rawHtml) {
@@ -719,6 +697,7 @@
                 return;
             }
 
+            // Zaten bu cümleyi beğenmişse beğeniyi geri al
             if (votedKey === key) {
                 votedKey = null;
                 saveVotedKey();
@@ -736,7 +715,11 @@
                 return;
             }
 
+            // Önce votedKey'i yeni cümleye ata ki eski cümlenin maviliği de kesin olarak kalksın
             const previousKey = votedKey;
+            votedKey = key;
+            saveVotedKey();
+
             if (previousKey && sentencesMap.has(previousKey)) {
                 const prevItem = sentencesMap.get(previousKey);
                 prevItem.likes = Math.max(0, prevItem.likes - 1);
@@ -746,9 +729,6 @@
                     return Math.max(0, (currentLikes || 0) - 1);
                 });
             }
-
-            votedKey = key;
-            saveVotedKey();
 
             const newItem = sentencesMap.get(key);
             if (newItem) {
@@ -875,7 +855,6 @@
             if (e) e.preventDefault();
             if (isSubmitting) return;
 
-            // Havuzda zaten aktif bir cümlesi varsa ikinciyi göndermesine izin verme
             if (ownSentenceKey && sentencesMap.has(ownSentenceKey)) {
                 document.getElementById('error-msg').innerText = 'Zaten havuzda bir cümlen var. Yeni yazmak için önce havuzdan kendi cümleni silmelisin.';
                 return;
@@ -931,11 +910,6 @@
             document.getElementById('error-msg').innerText = '';
             document.getElementById('pool-view').style.display = 'none';
             document.getElementById('entry-view').style.display = 'flex';
-        };
-
-        window.goToPool = function() {
-            document.getElementById('entry-view').style.display = 'none';
-            document.getElementById('pool-view').style.display = 'block';
         };
 
         window.openAdminModal = function() {
