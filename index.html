@@ -93,7 +93,7 @@
         /* Zengin Metin Yazma Alanı */
         #sentenceEditor {
             width: 100%;
-            height: 135px;
+            height: 130px;
             padding: 16px 16px 12px 16px;
             font-size: 16px;
             line-height: 1.5;
@@ -191,13 +191,21 @@
             transform: scale(0.98);
             background: rgba(255, 255, 255, 0.32);
         }
+
+        /* Gönder Butonu Altı Bilgilendirme Paragrafları */
+        .notes-container {
+            margin-top: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+        }
         .spelling-note {
             color: #ffffff;
             font-size: 13.5px;
-            line-height: 1.4;
-            margin-top: 12px;
+            line-height: 1.45;
             font-weight: 500;
-            opacity: 0.95;
+            opacity: 0.96;
         }
         #error-msg {
             color: #ffebee;
@@ -613,7 +621,11 @@
                 </div>
                 <button id="sendBtn" class="send-btn" type="button">Gönder</button>
                 <button id="goPoolBtn" class="btn-go-pool" type="button" onclick="goToPool()">Cümle Havuzuna Git</button>
-                <div class="spelling-note">Cümleni kurarken büyük harf, noktalama işaretleri ve yazım kurallarına özen göster.</div>
+                <div class="notes-container">
+                    <p class="spelling-note">Cümleni kurarken büyük harf, noktalama işaretleri ve yazım kurallarına özen göster. Biçimlendirme ayarlarıyla kelimelerini vurgulayabilirsin.</p>
+                    <p class="spelling-note">Her öğrencinin yalnızca bir cümle yazma hakkı vardır; değiştirmek istersen cümleni silip yeniden yazabilirsin. Güzel ve özgün bir üslup kullanmaya dikkat et.</p>
+                    <p class="spelling-note">Son olarak da oyunu kullanmayı unutma.</p>
+                </div>
                 <div id="error-msg"></div>
             </div>
         </div>
@@ -715,7 +727,6 @@
             }
         }
 
-        // Etkinlik durumunu (aktif / bitmiş) tüm cihazlarda anlık dinle
         onValue(statusRef, (snapshot) => {
             isActivityEnded = Boolean(snapshot.val());
             document.body.classList.toggle('activity-ended', isActivityEnded);
@@ -729,7 +740,6 @@
                 endBtn.innerText = 'Etkinliği Bitir';
             }
 
-            // Giriş ekranı kilidini güncelle
             document.getElementById('entry-closed-banner').style.display = isActivityEnded ? 'block' : 'none';
             document.getElementById('entry-form-area').style.display = isActivityEnded ? 'none' : 'block';
 
@@ -1114,7 +1124,6 @@
             document.getElementById('pool-view').style.display = 'block';
         };
 
-        // Yönetici: Etkinliği Bitir / Yeniden Başlat
         window.toggleActivityEnded = function() {
             const nextState = !isActivityEnded;
             const confirmMsg = nextState
